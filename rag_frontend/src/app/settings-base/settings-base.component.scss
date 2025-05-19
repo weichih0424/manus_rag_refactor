@@ -1,0 +1,49 @@
+/* 標籤顏色選擇器樣式 */
+select {
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid #ced4da;
+    background-color: #fff;
+    font-size: 0.95rem;
+}
+
+/* 響應式設計 */
+@media (max-width: 576px) {
+    select {
+        font-size: 0.9rem;
+    }
+}
+
+/* 標籤列表樣式 */
+.list-group-item {
+    transition: background-color 0.2s;
+    
+    &:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .badge {
+        font-size: 0.9rem;
+        padding: 6px 10px;
+    }
+    
+    .btn-danger {
+        transition: all 0.2s;
+        
+        &:hover {
+            transform: scale(1.05);
+        }
+    }
+}
+
+/* 改善表單元素外觀 */
+.form-control:focus, 
+.form-select:focus {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid rgba(0,0,0,.125);
+}

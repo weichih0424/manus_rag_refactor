@@ -1,0 +1,162 @@
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                    <h1 class="card-title">系統設置</h1>
+                    <p class="card-text">配置系統參數，優化使用體驗</p>
+                    
+                    <form (ngSubmit)="saveSettings()" class="mt-4">
+                        <!-- 嵌入模型設置 -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="mb-0">嵌入模型設置</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="embedding-model" class="form-label">嵌入模型</label>
+                                    <select class="form-select" id="embedding-model" name="embedding_model" 
+                                            [(ngModel)]="settings.embedding_model" (ngModelChange)="onFormChange()">
+                                        <option value="BAAI/bge-large-zh">BAAI/bge-large-zh(中文)</option>
+                                        <option value="sentence-transformers/all-mpnet-base-v2">all-mpnet-base-v2 (平衡)</option>
+                                        <option value="sentence-transformers/paraphrase-multilingual-mpnet-base-v2">paraphrase-multilingual-mpnet-base-v2 (多語言)</option>
+                                    </select>
+                                    <div class="form-text">選擇用於將文本轉換為向量的模型。更改此設置將需要重新處理所有文檔。</div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="chunk-size" class="form-label">分塊大小</label>
+                                            <input type="number" class="form-control" id="chunk-size" name="chunk_size" 
+                                                   min="100" max="4000" [(ngModel)]="settings.chunk_size" (ngModelChange)="onFormChange()">
+                                            <div class="form-text">文檔分塊的大小（字符數）。較小的分塊適合精確檢索，較大的分塊保留更多上下文。</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="chunk-overlap" class="form-label">分塊重疊</label>
+                                            <input type="number" class="form-control" id="chunk-overlap" name="chunk_overlap" 
+                                                   min="0" max="1000" [(ngModel)]="settings.chunk_overlap" (ngModelChange)="onFormChange()">
+                                            <div class="form-text">相鄰分塊之間的重疊字符數。適當的重疊有助於保持上下文連貫性。</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 檢索設置 -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="mb-0">檢索設置</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="top-k" class="form-label">檢索數量 (Top-K)</label>
+                                    <input type="number" class="form-control" id="top-k" name="top_k" 
+                                           min="1" max="20" [(ngModel)]="settings.top_k" (ngModelChange)="onFormChange()">
+                                    <div class="form-text">每次查詢檢索的文檔數量。較大的值提供更多上下文，但可能引入噪音。</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="use-rag-fusion" name="use_rag_fusion"
+                                               [(ngModel)]="settings.use_rag_fusion" (ngModelChange)="onFormChange()">
+                                        <label class="form-check-label" for="use-rag-fusion">使用 RAG Fusion</label>
+                                    </div>
+                                    <div class="form-text">生成多個相似查詢，融合檢索結果，提高檢索效果。可能增加響應時間。</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="use-reranking" name="use_reranking"
+                                               [(ngModel)]="settings.use_reranking" (ngModelChange)="onFormChange()">
+                                        <label class="form-check-label" for="use-reranking">使用重排序</label>
+                                    </div>
+                                    <div class="form-text">使用LLM對檢索結果進行重排序，提高相關性。可能增加響應時間和API調用成本。</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 生成設置 -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="mb-0">生成設置</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="llm-model" class="form-label">語言模型</label>
+                                    <select class="form-select" id="llm-model" name="llm_model"
+                                            [(ngModel)]="settings.llm_model" (ngModelChange)="onFormChange()">
+                                        <option value="gpt-3.5-turbo">GPT-3.5 Turbo (快速)</option>
+                                        <option value="gpt-4">GPT-4 (高質量)</option>
+                                        <option value="gpt-4-turbo">GPT-4 Turbo (平衡)</option>
+                                    </select>
+                                    <div class="form-text">選擇用於生成回答的語言模型。更高級的模型提供更好的質量，但成本更高。</div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="temperature" class="form-label">溫度</label>
+                                            <input type="range" class="form-range" id="temperature" name="temperature" 
+                                                   min="0" max="1" step="0.1" [(ngModel)]="settings.temperature" (ngModelChange)="onFormChange()">
+                                            <div class="d-flex justify-content-between">
+                                                <span class="small">精確 (0.0)</span>
+                                                <span class="small">{{ settings.temperature }}</span>
+                                                <span class="small">創造性 (1.0)</span>
+                                            </div>
+                                            <div class="form-text">控制生成的隨機性。較低的值產生更確定性的回答，較高的值產生更多樣化的回答。</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="max-tokens" class="form-label">最大長度</label>
+                                            <input type="number" class="form-control" id="max-tokens" name="max_tokens"
+                                                   min="100" max="4000" [(ngModel)]="settings.max_tokens" (ngModelChange)="onFormChange()">
+                                            <div class="form-text">生成回答的最大標記數。較大的值允許更長的回答，但可能增加成本。</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="use-cot" name="use_cot"
+                                               [(ngModel)]="settings.use_cot" (ngModelChange)="onFormChange()">
+                                        <label class="form-check-label" for="use-cot">使用思維鏈提示</label>
+                                    </div>
+                                    <div class="form-text">引導模型逐步思考和推理，提高回答質量。可能增加響應時間和API調用成本。</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 提交按鈕 -->
+                        <div class="d-flex justify-content-between">
+                            <button type="button" class="btn btn-secondary" (click)="resetSettings()">
+                                <i class="bi bi-arrow-counterclockwise"></i> 重置為默認值
+                            </button>
+                            <button type="submit" class="btn btn-primary" [disabled]="isSaving">
+                                <i class="bi bi-save"></i> 保存設置
+                                <span *ngIf="isSaving" class="spinner-border spinner-border-sm ms-1" role="status" aria-hidden="true"></span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 保存成功提示 -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 5">
+    <div class="toast" [ngClass]="{'show': showToast}" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header bg-success text-white">
+            <i class="bi bi-check-circle me-2"></i>
+            <strong class="me-auto">成功</strong>
+            <button type="button" class="btn-close" (click)="showToast = false" aria-label="Close"></button>
+        </div>
+        <div class="toast-body">
+            設置已成功保存！
+        </div>
+    </div>
+</div>

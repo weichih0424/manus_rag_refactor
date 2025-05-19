@@ -1,0 +1,256 @@
+/* 聊天頁面佈局 */
+.chat-card {
+    height: calc(100vh - 150px);
+    display: flex;
+    flex-direction: column;
+}
+.chat-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+}
+
+/* 訊息氣泡 */
+.message {
+    margin-bottom: 1rem;
+    max-width: 85%;
+    position: relative;
+}
+.user-message {
+    margin-left: auto;
+    background-color: #0d6efd;
+    color: white;
+    border-radius: 18px 18px 4px 18px;
+    padding: 10px 15px;
+}
+.assistant-message {
+    margin-right: auto;
+    background-color: #f1f3f5;
+    border-radius: 18px 18px 18px 4px;
+    padding: 10px 15px;
+}
+.system-message {
+    margin: 0 auto;
+    background-color: #e9ecef;
+    border-radius: 18px;
+    padding: 10px 15px;
+    text-align: center;
+    max-width: 70%;
+}
+
+/* 訊息內容 */
+.message-content {
+    margin-bottom: 0.5rem;
+    margin-right: 40px; /* 為複製按鈕預留空間 */
+    word-wrap: break-word;
+    
+    p {
+        margin-bottom: 0.5rem;
+    }
+    p:last-child {
+        margin-bottom: 0;
+    }
+    
+    /* Markdown 樣式 */
+    h1, h2, h3 {
+        font-size: 1.2rem;
+        margin-top: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    pre {
+        background-color: #f8f9fa;
+        padding: 0.5rem;
+        border-radius: 4px;
+        overflow-x: auto;
+    }
+    
+    code {
+        background-color: #f8f9fa;
+        padding: 2px 4px;
+        border-radius: 3px;
+        font-family: monospace;
+    }
+    
+    ul, ol {
+        padding-left: 1.5rem;
+        margin-bottom: 0.5rem;
+    }
+}
+
+/* 操作按鈕：複製 / 重新生成 */
+.message-actions {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    z-index: 1;
+}
+.assistant-message:hover .message-actions {
+    opacity: 1;
+}
+
+/* Card-footer 中的來源切換開關 */
+.form-check.form-switch {
+    margin-bottom: 0.5rem;
+    padding-left: 2.5rem;
+}
+.form-check-input {
+    cursor: pointer;
+    width: 2rem;
+    height: 1rem;
+}
+.form-check-input:checked {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+.form-check-label {
+    font-size: 0.9rem;
+    color: #333;
+    margin-left: 0.25rem;
+    line-height: 1rem;
+}
+
+/* 打字指示器 */
+.typing-indicator p {
+    display: flex;
+    align-items: center;
+}
+.typing-indicator i {
+    animation: pulse 1s infinite;
+    margin-right: 5px;
+}
+@keyframes pulse {
+    0% { opacity: 0.4; }
+    50% { opacity: 1; }
+    100% { opacity: 0.4; }
+}
+
+/* 來源列表樣式 */
+.message-sources {
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin-top: 10px;
+    padding: 5px 10px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    animation: fadeIn 0.3s ease-in;
+    transition: opacity 0.3s ease, height 0.3s ease;
+    clear: both;
+}
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+.source-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.source-list li {
+    padding: 3px 0;
+    position: relative;
+    padding-left: 15px;
+}
+.source-list li::before {
+    content: "•";
+    color: #0d6efd;
+    position: absolute;
+    left: 0;
+    font-size: 1rem;
+}
+.source-list li:hover {
+    background-color: #e9ecef;
+    cursor: pointer;
+}
+.source-list li.empty {
+    color: #adb5bd;
+    font-style: italic;
+}
+
+/* 相關文檔卡片 */
+.related-doc {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 15px;
+    border-left: 3px solid #0d6efd;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    transition: all 0.2s ease;
+}
+
+.related-doc:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+}
+
+.doc-title {
+    font-weight: bold;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+}
+
+.doc-title i {
+    margin-right: 8px;
+    color: #0d6efd;
+}
+
+.doc-content {
+    font-size: 0.9rem;
+    color: #333;
+    margin-bottom: 8px;
+    white-space: pre-line;
+    line-height: 1.5;
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 5px;
+    border-radius: 4px;
+    background-color: rgba(0,0,0,0.02);
+}
+
+.doc-meta {
+    font-size: 0.8rem;
+    color: #6c757d;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 5px;
+}
+
+.doc-page {
+    padding: 2px 6px;
+    background-color: #e9ecef;
+    border-radius: 12px;
+    font-weight: 500;
+}
+
+/* Toast 樣式 */
+.toast {
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+    z-index: 9999;
+}
+.toast.show {
+    opacity: 1;
+}
+
+/* 響應式調整 */
+@media (max-width: 768px) {
+    .chat-card {
+        height: calc(100vh - 200px);
+    }
+    .message {
+        max-width: 90%;
+    }
+    .message-sources {
+        font-size: 0.8rem;
+        margin-top: 6px;
+        padding: 0 5px;
+    }
+    .source-list li {
+        padding: 2px 0;
+        padding-left: 12px;
+    }
+}

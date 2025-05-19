@@ -1,0 +1,393 @@
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                    <h1 class="card-title">知識庫管理</h1>
+                    <p class="card-text">上傳文件，建立和管理您的知識庫</p>
+                    
+                    <!-- 知識庫統計信息 -->
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h5 class="card-title">知識庫統計</h5>
+                                    <div class="d-flex justify-content-between align-items-center mt-3">
+                                        <div>
+                                            <p class="mb-0"><i class="bi bi-file-earmark"></i> 文件數量</p>
+                                        </div>
+                                        <div>
+                                            <span class="badge bg-primary" id="files-count">{{filesCount}}</span>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mt-2">
+                                        <div>
+                                            <p class="mb-0"><i class="bi bi-card-text"></i> 文檔塊數量</p>
+                                        </div>
+                                        <div>
+                                            <span class="badge bg-primary" id="chunks-count">{{chunksCount}}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h5 class="card-title">支持的文件類型</h5>
+                                    <div class="d-flex flex-wrap mt-3">
+                                        <span class="badge bg-secondary me-2 mb-2">PDF</span>
+                                        <span class="badge bg-secondary me-2 mb-2">TXT</span>
+                                        <span class="badge bg-secondary me-2 mb-2">DOCX</span>
+                                        <span class="badge bg-secondary me-2 mb-2">CSV</span>
+                                        <span class="badge bg-secondary me-2 mb-2">HTML</span>
+                                    </div>
+                                    <p class="small text-muted mt-2">最大文件大小: 50MB</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 文件上傳區域 -->
+                    <div class="row mt-4">
+                        <div class="col-md-12">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title">上傳文件</h5>
+                                    <div class="mb-3">
+                                        <label for="file-type-select" class="form-label">選擇上傳檔案格式（僅適用於資料夾上傳）：</label>
+                                        <select id="file-type-select" class="form-select w-auto d-inline-block" [(ngModel)]="selectedFileType" (change)="onFileTypeChange()">
+                                            <option value="all">全部格式（PDF, TXT, DOCX, CSV, HTML）</option>
+                                            <option value="pdf">僅 PDF</option>
+                                            <option value="txt">僅 TXT</option>
+                                            <option value="docx">僅 DOCX</option>
+                                            <option value="csv">僅 CSV</option>
+                                            <option value="html">僅 HTML</option>
+                                        </select>
+                                    </div>
+                                    <div class="upload-area mt-3" id="upload-area" 
+                                         (dragover)="onDragOver($event)" 
+                                         (dragleave)="onDragLeave()" 
+                                         (drop)="onDrop($event)"
+                                         [class.dragover]="isDragOver">
+                                        <div class="upload-content text-center py-5">
+                                            <i class="bi bi-cloud-arrow-up upload-icon"></i>
+                                            <h4 class="mt-3">拖放文件或資料夾到此處，或點擊上傳</h4>
+                                            <p class="text-muted">支持 PDF, TXT, DOCX, CSV, HTML 格式</p>
+                                            <input type="file" #fileInput class="d-none" 
+                                                   accept=".pdf,.txt,.docx,.csv,.html"
+                                                   (change)="onFileSelected($event)">
+                                            <input type="file" #folderInput class="d-none" 
+                                                   webkitdirectory directory multiple 
+                                                   [accept]="folderInputAccept"
+                                                   (change)="onFolderSelected($event)">
+                                            <div class="d-flex justify-content-center gap-3 mt-3">
+                                                <button class="btn btn-primary" (click)="uploadFile()">選擇文件</button>
+                                                <button class="btn btn-primary" (click)="uploadFolder()">選擇資料夾</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 上傳進度 -->
+                    <div class="row mt-4" [style.display]="uploadProgressVisible ? 'block' : 'none'">
+                        <div class="col-md-12">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title">上傳進度</h5>
+                                    <div class="mt-3" id="upload-progress-list" [class.scrollable-progress-list]="uploadProgressItems.length > 3">
+                                        <div class="upload-progress-item mb-3" *ngFor="let item of uploadProgressItems" [attr.data-file-name]="item.fileName">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <p class="mb-0 upload-file-name">{{item.fileName}}</p>
+                                                <button class="btn btn-sm btn-danger cancel-upload-button" (click)="cancelUpload(item.fileName)">
+                                                    <i class="bi bi-x-circle"></i> 取消
+                                                </button>
+                                            </div>
+                                            <div class="progress">
+                                                <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                                     role="progressbar" 
+                                                     [style.width.%]="item.progress"></div>
+                                            </div>
+                                            <p class="small text-muted mt-2">{{item.status}}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 已上傳文件列表 -->
+                    <div class="row mt-4">
+                        <div class="col-md-12">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title">已上傳文件</h5>
+                                    <!-- 搜尋與篩選 -->
+                                    <div class="file-filters mb-3">
+                                        <div class="row g-2">
+                                            <div class="col-md-4 col-sm-12">
+                                                <input type="text" [(ngModel)]="searchQuery" (input)="onSearchChange()"
+                                                       placeholder="搜尋檔案名稱、類型或狀態" class="form-control" aria-label="搜尋檔案">
+                                            </div>
+                                            <div class="col-md-4 col-sm-6">
+                                                <select [(ngModel)]="typeFilter" (change)="onFilterChange()" 
+                                                        class="form-select" aria-describedby="type-filter-desc">
+                                                    <option value="">所有類型</option>
+                                                    <option value="pdf">PDF</option>
+                                                    <option value="txt">TXT</option>
+                                                    <option value="docx">DOCX</option>
+                                                    <option value="csv">CSV</option>
+                                                    <option value="html">HTML</option>
+                                                </select>
+                                                <span id="type-filter-desc" class="visually-hidden">篩選檔案類型</span>
+                                            </div>
+                                            <div class="col-md-4 col-sm-6">
+                                                <select [(ngModel)]="statusFilter" (change)="onFilterChange()"
+                                                        class="form-select" aria-label="篩選檔案狀態">
+                                                    <option value="">所有狀態</option>
+                                                    <option value="uploading">上傳中</option>
+                                                    <option value="processing">處理中</option>
+                                                    <option value="processed">已處理</option>
+                                                    <option value="error">錯誤</option>
+                                                    <option value="cancelled">已取消</option>
+                                                </select>
+                                                <span id="status-filter-desc" class="visually-hidden">篩選檔案狀態</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- 標籤分配 -->
+                                    <div class="col-md-6 mb-3 tag-select-container">
+                                        <label for="tag-select" class="form-label">標籤</label>
+                                        <ng-select
+                                            [items]="tags"
+                                            [multiple]="true"
+                                            bindLabel="name"
+                                            bindValue="name"
+                                            placeholder="選擇標籤"
+                                            [(ngModel)]="selectedTags"
+                                            [closeOnSelect]="false"
+                                            [searchable]="true"
+                                            [clearable]="true">
+                                            <ng-template ng-label-tmp let-item="item" let-clear="clear">
+                                                <span class="badge me-1" [ngClass]="'bg-' + item.color">
+                                                    {{item.name}}
+                                                    <span class="ms-1" (click)="clear(item)" aria-hidden="true">×</span>
+                                                </span>
+                                            </ng-template>
+                                            <ng-template ng-option-tmp let-item="item">
+                                                <div class="tag-option" [ngClass]="'tag-option-' + item.color">
+                                                    <span class="badge me-1" [ngClass]="'bg-' + item.color"></span>
+                                                    {{item.name}}
+                                                </div>
+                                            </ng-template>
+                                        </ng-select>
+                                        <button class="btn btn-primary mt-2 me-2" (click)="applyTags()">應用標籤</button>
+                                        <button class="btn btn-danger mt-2" (click)="removeTags()">移除標籤</button>
+                                    </div>
+                                    
+                                    <div class="table-responsive mt-3">
+                                        <table class="table table-striped">
+                                            <thead>
+                                                <tr>
+                                                    <th><input type="checkbox" (change)="toggleSelectAll()" [checked]="isAllSelected" [indeterminate]="isIndeterminate"></th>
+                                                    <th class="sortable-th" (click)="sortFiles('original_filename')">
+                                                        檔案名稱 
+                                                        <span class="sort-arrow">
+                                                            <i *ngIf="sortColumn === 'original_filename'" 
+                                                               class="bi" 
+                                                               [ngClass]="{'bi-arrow-up': sortDirection === 'asc', 'bi-arrow-down': sortDirection === 'desc'}"></i>
+                                                        </span>
+                                                    </th>
+                                                    <th class="sortable-th" (click)="sortFiles('file_type')">
+                                                        類型 
+                                                        <span class="sort-arrow">
+                                                            <i *ngIf="sortColumn === 'file_type'" 
+                                                               class="bi" 
+                                                               [ngClass]="{'bi-arrow-up': sortDirection === 'asc', 'bi-arrow-down': sortDirection === 'desc'}"></i>
+                                                        </span>
+                                                    </th>
+                                                    <th class="sortable-th" (click)="sortFiles('file_size')">
+                                                        大小 
+                                                        <span class="sort-arrow">
+                                                            <i *ngIf="sortColumn === 'file_size'" 
+                                                               class="bi" 
+                                                               [ngClass]="{'bi-arrow-up': sortDirection === 'asc', 'bi-arrow-down': sortDirection === 'desc'}"></i>
+                                                        </span>
+                                                    </th>
+                                                    <th class="sortable-th" (click)="sortFiles('upload_time')">
+                                                        上傳時間 
+                                                        <span class="sort-arrow">
+                                                            <i *ngIf="sortColumn === 'upload_time'" 
+                                                               class="bi" 
+                                                               [ngClass]="{'bi-arrow-up': sortDirection === 'asc', 'bi-arrow-down': sortDirection === 'desc'}"></i>
+                                                        </span>
+                                                    </th>
+                                                    <th>標籤</th>
+                                                    <th class="sortable-th" (click)="sortFiles('status')">
+                                                        狀態 
+                                                        <span class="sort-arrow">
+                                                            <i *ngIf="sortColumn === 'status'" 
+                                                               class="bi" 
+                                                               [ngClass]="{'bi-arrow-up': sortDirection === 'asc', 'bi-arrow-down': sortDirection === 'desc'}"></i>
+                                                        </span>
+                                                    </th>
+                                                    <th class="sortable-th" (click)="sortFiles('chunks_count')">
+                                                        文檔塊 
+                                                        <span class="sort-arrow">
+                                                            <i *ngIf="sortColumn === 'chunks_count'" 
+                                                               class="bi" 
+                                                               [ngClass]="{'bi-arrow-up': sortDirection === 'asc', 'bi-arrow-down': sortDirection === 'desc'}"></i>
+                                                        </span>
+                                                    </th>
+                                                    <th>操作</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr *ngFor="let file of paginatedFiles" [attr.data-file-id]="file.id">
+                                                    <td><input type="checkbox" class="file-checkbox" 
+                                                               [attr.data-file-id]="file.id" 
+                                                               [checked]="selectedFileIds.has(file.id)"
+                                                               (change)="toggleFileSelection(file.id)"></td>
+                                                    <td>{{file.original_filename}}</td>
+                                                    <td>{{file.file_type.toUpperCase()}}</td>
+                                                    <td>{{formatFileSize(file.file_size)}}</td>
+                                                    <td>{{file.upload_time | date:'medium'}}</td>
+                                                    <td>
+                                                        <ng-container *ngIf="file.tags && file.tags.length > 0; else noTags">
+                                                            <span *ngFor="let tag of file.tags" 
+                                                                  class="badge me-1" 
+                                                                  [ngClass]="'bg-' + getTagColor(tag)">
+                                                                {{getTagName(tag)}}
+                                                            </span>
+                                                        </ng-container>
+                                                        <ng-template #noTags>
+                                                            <span class="text-muted">無標籤</span>
+                                                        </ng-template>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge" [ngClass]="getStatusBadgeClass(file.status)">
+                                                            {{getStatusText(file.status)}}
+                                                        </span>
+                                                    </td>
+                                                    <td>{{file.chunks_count || 0}}</td>
+                                                    <td>
+                                                        <button class="btn btn-sm btn-danger delete-file-btn" 
+                                                                (click)="deleteFile(file.id)">
+                                                            <i class="bi bi-trash"></i>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div *ngIf="filteredFiles.length === 0" class="text-center py-3">
+                                        目前沒有上傳任何文件。
+                                    </div>
+                                    
+                                    <!-- 分頁 -->
+                                    <nav *ngIf="filteredFiles.length > 0" aria-label="Files pagination" class="d-flex justify-content-center mt-3">
+                                        <ul class="pagination">
+                                            <li class="page-item" [class.disabled]="currentPage === 1">
+                                                <a class="page-link" href="javascript:void(0)" 
+                                                   (click)="goToPage(currentPage - 1)" aria-label="Previous">
+                                                    «
+                                                </a>
+                                            </li>
+                                            
+                                            <li *ngIf="startPage > 1" class="page-item">
+                                                <a class="page-link" href="javascript:void(0)" (click)="goToPage(1)">1</a>
+                                            </li>
+                                            
+                                            <li *ngIf="startPage > 2" class="page-item disabled">
+                                                <span class="page-link">...</span>
+                                            </li>
+                                            
+                                            <li *ngFor="let page of pageRange" class="page-item" [class.active]="currentPage === page">
+                                                <a class="page-link" href="javascript:void(0)" (click)="goToPage(page)">{{page}}</a>
+                                            </li>
+                                            
+                                            <li *ngIf="endPage < totalPages - 1" class="page-item disabled">
+                                                <span class="page-link">...</span>
+                                            </li>
+                                            
+                                            <li *ngIf="endPage < totalPages" class="page-item">
+                                                <a class="page-link" href="javascript:void(0)" (click)="goToPage(totalPages)">{{totalPages}}</a>
+                                            </li>
+                                            
+                                            <li class="page-item" [class.disabled]="currentPage === totalPages">
+                                                <a class="page-link" href="javascript:void(0)" 
+                                                   (click)="goToPage(currentPage + 1)" aria-label="Next">
+                                                    »
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </nav>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 模態框：處理重複檔案 -->
+<div class="modal fade" id="duplicateFileModal" tabindex="-1" aria-labelledby="duplicateFileModalLabel" role="dialog" aria-modal="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="duplicateFileModalLabel">發現重複檔案</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" 
+                        tabindex="-1"></button>
+            </div>
+            <div class="modal-body">
+                <p>以下檔案已存在於知識庫中，請選擇操作：</p>
+                <div id="duplicateFilesList" class="mb-3">
+                    <p>有 {{duplicateFiles.length}} 個檔案已存在於知識庫中。</p>
+                    
+                    <button class="btn btn-outline-primary dropdown-toggle" 
+                            [class.active]="detailsVisible"
+                            (click)="toggleDetails()"
+                            [attr.aria-expanded]="detailsVisible"
+                            tabindex="0">
+                        {{detailsVisible ? '隱藏詳情' : '查看詳情'}}
+                    </button>
+                    
+                    <div [class.d-none]="!detailsVisible" class="mb-3 mt-2">
+                        <input type="text" class="form-control" 
+                               [(ngModel)]="duplicateSearchQuery" 
+                               (input)="filterDuplicates()"
+                               placeholder="搜尋檔案名稱..."
+                               tabindex="0">
+                    </div>
+                    
+                    <div id="duplicate-list" [class.d-none]="!detailsVisible" class="list-group">
+                        <li *ngFor="let dup of filteredDuplicates" class="list-group-item">
+                            {{dup.filename}}
+                        </li>
+                        <li *ngIf="filteredDuplicates.length === 0" class="list-group-item text-muted">
+                            無符合搜尋條件的檔案
+                        </li>
+                    </div>
+                </div>
+                <p>選擇「繼續」以跳過重複檔案，選擇「覆蓋」以重新上傳（將刪除原有檔案），選擇「取消」以中止上傳。</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" 
+                        (click)="handleDuplicateAction('cancel')"
+                        tabindex="0" autofocus="false">取消</button>
+                <button type="button" class="btn btn-primary" 
+                        (click)="handleDuplicateAction('skip')"
+                        tabindex="0" autofocus="false">繼續（跳過重複檔案）</button>
+                <button type="button" class="btn btn-danger" 
+                        (click)="handleDuplicateAction('overwrite')"
+                        tabindex="0" autofocus="false">全部覆蓋</button>
+            </div>
+        </div>
+    </div>
+</div>

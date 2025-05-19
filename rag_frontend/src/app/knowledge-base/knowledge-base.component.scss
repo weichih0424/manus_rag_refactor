@@ -1,0 +1,204 @@
+/* 容器樣式：確保標籤選擇區域整潔 */
+.tag-select-container {
+    max-width: 400px; /* 限制寬度 */
+}
+
+/* ng-select 自定義樣式 */
+::ng-deep .ng-select {
+    padding-bottom: 0;
+}
+
+::ng-deep .ng-select.ng-select-multiple .ng-select-container .ng-value-container .ng-value {
+    background-color: transparent;
+    border: none;
+    margin: 0 4px 4px 0;
+}
+
+::ng-deep .ng-select.ng-select-multiple .ng-select-container .ng-value-container .ng-value .ng-value-icon.left {
+    border: none;
+}
+
+::ng-deep .ng-select.ng-select-multiple .ng-select-container .ng-value-container .ng-value .ng-value-icon:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+::ng-deep .ng-select .ng-select-container {
+    min-height: 38px;
+    border-radius: 6px;
+    border: 1px solid #ced4da;
+}
+
+::ng-deep .ng-select.ng-select-focused .ng-select-container {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+::ng-deep .ng-dropdown-panel {
+    border: 1px solid #ced4da;
+    border-radius: 0 0 6px 6px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+::ng-deep .ng-dropdown-panel .ng-dropdown-panel-items .ng-option {
+    padding: 8px 12px;
+    font-size: 0.95rem;
+}
+
+::ng-deep .ng-dropdown-panel .ng-dropdown-panel-items .ng-option.ng-option-marked {
+    background-color: transparent;
+    color: #333;
+    .tag-option {
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+}
+
+::ng-deep .ng-dropdown-panel .ng-dropdown-panel-items .ng-option.ng-option-selected {
+    background-color: transparent;
+    color: #333;
+    font-weight: 500;
+}
+
+/* 標籤選項的顏色樣式 */
+::ng-deep .tag-option {
+    padding: 2px 0;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+::ng-deep .tag-option-primary {
+    background-color: rgba(13, 110, 253, 0.1);
+    border-left: 3px solid #0d6efd;
+    padding-left: 5px;
+}
+
+::ng-deep .tag-option-secondary {
+    background-color: rgba(108, 117, 125, 0.1);
+    border-left: 3px solid #6c757d;
+    padding-left: 5px;
+}
+
+::ng-deep .tag-option-success {
+    background-color: rgba(25, 135, 84, 0.1);
+    border-left: 3px solid #198754;
+    padding-left: 5px;
+}
+
+::ng-deep .tag-option-danger {
+    background-color: rgba(220, 53, 69, 0.1);
+    border-left: 3px solid #dc3545;
+    padding-left: 5px;
+}
+
+::ng-deep .tag-option-warning {
+    background-color: rgba(255, 193, 7, 0.1);
+    border-left: 3px solid #ffc107;
+    padding-left: 5px;
+}
+
+::ng-deep .tag-option-info {
+    background-color: rgba(13, 202, 240, 0.1);
+    border-left: 3px solid #0dcaf0;
+    padding-left: 5px;
+}
+
+::ng-deep .tag-option-dark {
+    background-color: rgba(33, 37, 41, 0.1);
+    border-left: 3px solid #212529;
+    padding-left: 5px;
+}
+
+/* 響應式設計：移動設備 */
+@media (max-width: 576px) {
+    .tag-select-container {
+        max-width: 100%; /* 移動設備上不限制寬度 */
+    }
+
+    ::ng-deep .ng-select .ng-select-container {
+        min-height: 34px;
+        font-size: 0.9rem;
+    }
+
+    ::ng-deep .ng-dropdown-panel .ng-dropdown-panel-items .ng-option {
+        padding: 6px 10px;
+        font-size: 0.9rem;
+    }
+}
+
+/* --- 以下為檔案管理列表專用規則 --- */
+
+/* 欄位固定寬度 */
+.table th:nth-child(1), .table td:nth-child(1) { /* 核取方塊 */
+    width: 5%;
+    min-width: 40px;
+}
+.table th:nth-child(2), .table td:nth-child(2) { /* 檔案名稱 */
+    width: 25%;
+    min-width: 200px;
+    white-space: normal; /* 允許檔案名稱換行 */
+    word-break: break-all; /* 長檔案名稱自動斷行 */
+}
+.table th:nth-child(3), .table td:nth-child(3) { /* 類型 */
+    width: 10%;
+    min-width: 60px;
+}
+.table th:nth-child(4), .table td:nth-child(4) { /* 大小 */
+    width: 10%;
+    min-width: 80px;
+}
+.table th:nth-child(5), .table td:nth-child(5) { /* 上傳時間 */
+    width: 15%;
+    min-width: 120px;
+}
+.table th:nth-child(6), .table td:nth-child(6) { /* 標籤 */
+    width: 15%;
+    min-width: 100px;
+    white-space: normal; /* 標籤允許換行 */
+}
+.table th:nth-child(7), .table td:nth-child(7) { /* 狀態 */
+    width: 10%;
+    min-width: 80px;
+}
+.table th:nth-child(8), .table td:nth-child(8) { /* 文檔塊 */
+    width: 10%;
+    min-width: 80px;
+}
+.table th:nth-child(9), .table td:nth-child(9) { /* 操作 */
+    width: 10%;
+    min-width: 80px;
+}
+
+/* 文件上傳區域 */
+.upload-area {
+    border: 2px dashed #dee2e6;
+    border-radius: 8px;
+    background-color: #f8f9fa;
+    transition: all 0.3s ease;
+    &:hover,
+    &.dragover {
+        border-color: #0d6efd;
+        background-color: #e9ecef;
+    }
+}
+
+.upload-icon {
+    font-size: 3rem;
+    color: #6c757d;
+}
+
+/* 進度區域 */
+.scrollable-progress-list {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 0.5rem;
+}
+
+/* 重複文件列表 */
+#duplicate-list {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 0.5rem;
+}

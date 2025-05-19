@@ -1,0 +1,25 @@
+django
+djangorestframework
+django-cors-headers
+langchain
+langchain-chroma
+langchain-community
+langchain-core
+# langchain-huggingface # Excluded
+langchain-openai
+langchain-text-splitters
+chromadb
+huggingface-hub
+# sentence-transformers # Excluded
+# torch # Excluded
+openai
+tiktoken
+python-dotenv
+pypdf
+python-docx
+python-magic
+unstructured[html]
+jieba
+rank_bm25
+numpy
+
