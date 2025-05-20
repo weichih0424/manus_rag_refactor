@@ -21,7 +21,7 @@ from .views import (
 router = DefaultRouter()
 router.register(r"files", FileViewSet, basename="file")
 router.register(r"tags", TagViewSet, basename="tag")
-router.register(r"chat_history", ChatMessageViewSet, basename="chatmessage") # For viewing chat history
+router.register(r"chat_history", ChatMessageViewSet, basename="chat_history") # For viewing chat history
 
 # The API URLs are now determined automatically by the router.
 # Additionally, we include a path for the QueryView and SettingsView.

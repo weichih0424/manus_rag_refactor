@@ -220,11 +220,26 @@ class QueryView(APIView):
         except Exception as e:
             logger.exception(f"Error processing query: {e}")
             return Response({"error": f"Failed to process query: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class ChatMessageViewSet(viewsets.ModelViewSet):
+    queryset = ChatMessage.objects.all().order_by("timestamp")
+    serializer_class = ChatMessageSerializer
+    http_method_names = ["get", "post", "delete", "head", "options"]  # 確保包含post方法
     
-    @action(detail=False, methods=['post'], url_path='regenerate')
+    @action(detail=False, methods=["delete"], name="Clear History")
+    def clear(self, request):
+        """清空所有聊天歷史"""
+        try:
+            ChatMessage.objects.all().delete()
+            return Response({"success": True}, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.exception(f"清空聊天歷史時出錯: {e}")
+            return Response({"success": False, "error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=False, methods=["post"], url_path="regenerate", url_name="regenerate")
     def regenerate(self, request):
         """重新生成回答，嘗試使用不同的策略"""
-        serializer = self.serializer_class(data=request.data)
+        serializer = QuerySerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
@@ -303,22 +318,6 @@ class SettingsAPIView(generics.RetrieveUpdateAPIView):
 class TagViewSet(viewsets.ModelViewSet):
     queryset = Tag.objects.all().order_by("create_time")
     serializer_class = TagSerializer
-
-# ChatMessageViewSet (from my previous version, if needed for history)
-class ChatMessageViewSet(viewsets.ModelViewSet):
-    queryset = ChatMessage.objects.all().order_by("timestamp")
-    serializer_class = ChatMessageSerializer
-    http_method_names = ["get", "head", "options", "delete"] # 添加delete方法
-    
-    @action(detail=False, methods=["delete"], name="Clear History")
-    def clear(self, request):
-        """清空所有聊天歷史"""
-        try:
-            ChatMessage.objects.all().delete()
-            return Response({"success": True}, status=status.HTTP_200_OK)
-        except Exception as e:
-            logger.exception(f"清空聊天歷史時出錯: {e}")
-            return Response({"success": False, "error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # 知識庫狀態視圖
 @api_view(["GET"])

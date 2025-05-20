@@ -44,7 +44,7 @@ export class ChatService {
 
   // 重新生成回答
   regenerateAnswer(message: string, id: string, showSources: boolean): Observable<ChatResponse> {
-    return this.http.post<ChatResponse>(`${this.apiUrl}/query/regenerate/`, {
+    return this.http.post<ChatResponse>(`${this.apiUrl}/chat_history/regenerate/`, {
       question: message,
       id,
       show_sources: showSources
