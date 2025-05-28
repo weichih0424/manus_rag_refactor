@@ -1,6 +1,6 @@
 # /home/ubuntu/manus_rag_refactor/backend_merged/api/serializers.py
 from rest_framework import serializers
-from .models import Tag, File, ChatMessage, Settings as SettingsModel # Renamed to avoid conflict
+from .models import Tag, File, ChatMessage, Setting as SettingModel, Conversation # 添加 Conversation 導入
 
 # 通用響應序列化器
 class StatusResponseSerializer(serializers.Serializer):
@@ -56,15 +56,23 @@ class FileSerializer(serializers.ModelSerializer):
 class FileUploadSerializer(serializers.Serializer):
     file = serializers.FileField()
 
+class ConversationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Conversation
+        fields = ['id', 'title', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
 class ChatMessageSerializer(serializers.ModelSerializer):
+    conversation_id = serializers.UUIDField(write_only=True, required=False)
+
     class Meta:
         model = ChatMessage
-        fields = ['id', 'user_message', 'assistant_message', 'timestamp', 'related_docs', 'show_sources']
+        fields = ['id', 'conversation_id', 'user_message', 'assistant_message', 'timestamp', 'related_docs', 'show_sources']
         read_only_fields = ['id', 'timestamp']
 
-class SettingsSerializer(serializers.ModelSerializer):
+class SettingSerializer(serializers.ModelSerializer):
     class Meta:
-        model = SettingsModel # Use the aliased SettingsModel
+        model = SettingModel # Use the aliased SettingModel
         fields = [
             'embedding_model', 'llm_model', 'temperature', 'max_tokens',
             'chunk_size', 'chunk_overlap', 'top_k', 'use_rag_fusion',

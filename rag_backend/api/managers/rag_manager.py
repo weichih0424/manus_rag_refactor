@@ -3,6 +3,14 @@ RAG Web App - RAG管理器 (優化版)
 負責整體RAG系統管理
 """
 import os
+import django
+from django.conf import settings as django_settings
+
+# 確保 Django 已經設置
+if not django_settings.configured:
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'rag_backend.settings')
+    django.setup()
+
 from datetime import datetime
 from typing import List, Dict, Any, Tuple, Optional
 import sqlite3
@@ -23,8 +31,8 @@ from api.managers.llm_manager import LLMManager
 from api.managers.retrieval import RetrievalManager
 from api.managers.file_processor import FileProcessor
 from api.managers.vector_manager import VectorManager
-from api.managers.database_manager import DatabaseManager
-from api.managers.settings_manager import SettingsManager
+
+from api.models import Setting
 
 logger = logging.getLogger(__name__)
 
@@ -49,12 +57,42 @@ class RAGManager:
         self.upload_dir = upload_dir
         self.db_path = db_path
         
-        # 初始化設置管理器和數據庫管理器
-        self.settings_manager = SettingsManager(self.db_path)
-        self.db_manager = DatabaseManager(self.db_path)
+        # 正常初始化流程
+        self._initialize()
+    
+    def _get_default_settings(self) -> Dict[str, Any]:
+        """獲取預設設置"""
+        return {
+            'embedding_model': 'BAAI/bge-large-zh',
+            'llm_model': 'gpt-3.5-turbo',
+            'temperature': 0.1,
+            'max_tokens': 1000,
+            'chunk_size': 1000,
+            'chunk_overlap': 200,
+            'top_k': 4,
+            'use_rag_fusion': False,
+            'use_reranking': False,
+            'use_cot': False,
+            'use_bm25': True,
+            'use_contextual_embeddings': True,
+            'use_hybrid': True,
+            'use_intelligent_splitting': True
+        }
+    
+    def _initialize(self):
+        """執行完整初始化"""
+        # 不再需要 DatabaseManager，完全使用 Django ORM
         
-        # 加載設置
-        self.settings = self.settings_manager.load_settings()
+        # 使用 Django ORM 加載設置，如果失敗則使用預設設置
+        try:
+            from api.models import Setting
+            django_settings_obj = Setting.load()
+            self.settings = django_settings_obj.to_dict()
+            print("使用 Django ORM 加載設置成功")
+        except Exception as e:
+            print(f"Django ORM 加載設置失敗: {str(e)}")
+            print("使用預設設置")
+            self.settings = self._get_default_settings()
         
         # 初始化嵌入模型
         self.embeddings = HuggingFaceEmbeddings(model_name=self.settings['embedding_model'])
@@ -107,51 +145,39 @@ class RAGManager:
             file_id: 文件ID
         """
         log_message(f"開始取消文件 {file_id} 的處理...")
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
         
         try:
-            # 獲取文件信息
-            cursor.execute('SELECT file_path, status FROM files WHERE id = ?', (file_id,))
-            result = cursor.fetchone()
+            # 直接使用 Django ORM 獲取和更新文件狀態
+            from django.apps import apps
+            File = apps.get_model('api', 'File')
             
-            if result:
-                file_path, status = result
-                if status in ['uploading', 'processing']:
+            try:
+                file_obj = File.objects.get(id=file_id)
+                
+                if file_obj.status in ['uploading', 'processing']:
                     # 更新狀態為已取消
                     log_message(f"將文件 {file_id} 狀態設置為已取消...")
-                    cursor.execute('UPDATE files SET status = ? WHERE id = ?', ('cancelled', file_id))
-                    conn.commit()
+                    file_obj.status = 'cancelled'
+                    file_obj.save()
                     
                     # 從向量存儲中移除相關文檔
                     log_message(f"從向量存儲中移除文件 {file_id} 相關文檔...")
                     # 先嘗試根據文件路徑刪除
-                    self.vector_manager.delete_documents_by_source(file_path)
+                    if file_obj.file:
+                        self.vector_manager.delete_documents_by_source(file_obj.file.path)
                     # 再嘗試根據文件ID刪除
                     self.vector_manager.delete_file(file_id)
                     log_message(f"已取消文件 {file_id} 的處理並清理相關數據")
-                    
-                    # 嘗試更新Django數據庫
-                    try:
-                        from django.apps import apps
-                        File = apps.get_model('api', 'File')
-                        file_obj = File.objects.get(id=file_id)
-                        file_obj.status = 'cancelled'
-                        file_obj.save()
-                        log_message(f"已更新Django數據庫中文件 {file_id} 的狀態為已取消")
-                    except Exception as e:
-                        log_message(f"更新Django數據庫中文件 {file_id} 狀態時出錯: {str(e)}")
-                        # 不影響主要功能，只是記錄錯誤
                 else:
-                    log_message(f"文件 {file_id} 當前狀態為 {status}，不需要取消")
-            else:
+                    log_message(f"文件 {file_id} 當前狀態為 {file_obj.status}，不需要取消")
+                    
+            except File.DoesNotExist:
                 log_message(f"找不到文件 {file_id} 的信息")
+                
         except Exception as e:
             log_message(f"取消文件處理時出錯: {str(e)}")
             import traceback
             traceback.print_exc()
-        finally:
-            conn.close()
     
     def _ensure_dependencies(self):
         """
@@ -192,7 +218,7 @@ class RAGManager:
         if any(key in new_settings for key in ['llm_model', 'temperature', 'max_tokens']):
             self.llm_manager.update_llm_settings(new_settings, self.vector_manager)
         
-        self.retrieval_manager.settings.update(new_settings)
+        self.retrieval_manager.Setting.update(new_settings)
         self.file_processor.update_settings(new_settings)
     
     def _format_context(self, documents: List[Document]) -> str:
@@ -208,8 +234,17 @@ class RAGManager:
         context_parts = []
         for i, doc in enumerate(documents):
             file_id = doc.metadata.get('file_id', '')
-            file_info = self.db_manager.get_file_info(file_id)
-            file_name = file_info.get('original_filename', 'Unknown') if file_info else 'Unknown'
+            
+            # 嘗試從 Django 獲取文件名
+            file_name = "Unknown"
+            try:
+                from django.apps import apps
+                File = apps.get_model('api', 'File')
+                file_obj = File.objects.get(id=file_id)
+                file_name = file_obj.original_filename
+            except Exception:
+                file_name = "Unknown"
+            
             page = doc.metadata.get('page', 0) + 1
             
             context_part = f"[文檔 {i+1}] 來源: {file_name}, 頁碼: {page}\n{doc.page_content}\n"
@@ -224,7 +259,30 @@ class RAGManager:
         Returns:
             文件列表
         """
-        return self.db_manager.get_all_files()
+        try:
+            from django.apps import apps
+            File = apps.get_model('api', 'File')
+            
+            files = File.objects.all()
+            file_list = []
+            
+            for file_obj in files:
+                file_info = {
+                    'id': str(file_obj.id),
+                    'original_filename': file_obj.original_filename,
+                    'file_path': file_obj.file.path if file_obj.file else '',
+                    'file_type': file_obj.file_type,
+                    'file_size': file_obj.file_size,
+                    'upload_time': file_obj.upload_time.isoformat(),
+                    'status': file_obj.status,
+                    'chunks_count': file_obj.chunks_count
+                }
+                file_list.append(file_info)
+            
+            return file_list
+        except Exception as e:
+            log_message(f"獲取文件列表時出錯: {str(e)}")
+            return []
     
     def add_file_to_db(self, file_id: str, original_filename: str, file_path: str) -> None:
         """
@@ -235,7 +293,9 @@ class RAGManager:
             original_filename: 原始文件名
             file_path: 文件路徑
         """
-        self.db_manager.add_file(file_id, original_filename, file_path)
+        # 這個方法現在不需要了，因為文件已經在 Django 中創建
+        # 保留這個方法是為了向後兼容，但實際上什麼都不做
+        log_message(f"add_file_to_db 被調用，但文件 {file_id} 應該已經在 Django 中存在")
     
     def process_file(self, file_id: str, file_path: str) -> None:
         """
@@ -247,80 +307,87 @@ class RAGManager:
         """
         if not os.path.exists(file_path):
             log_message(f"文件不存在: {file_path}")
-            self.db_manager.update_file_status(file_id, 'error')
-            return
-        
-        # 設置文件狀態為處理中
-        self.db_manager.update_file_status(file_id, 'processing')
-        
-        try:
-            # 調用文件處理器處理文件
-            chunked_documents = self.file_processor.process_file(file_id, file_path)
-            
-            # 檢查文件狀態
-            file_info = self.db_manager.get_file_info(file_id)
-            if file_info and file_info['status'] == 'cancelled':
-                log_message(f"文件 {file_id} 處理被取消，中止後續操作")
-                return
-            
-            # 如果成功處理，更新 BM25 和狀態
-            if chunked_documents:
-                if self.settings.get('use_bm25', True):
-                    # 再次檢查狀態
-                    file_info = self.db_manager.get_file_info(file_id)
-                    if file_info and file_info['status'] == 'cancelled':
-                        log_message(f"文件 {file_id} 處理被取消，中止 BM25 索引更新")
-                        return
-                    self.retrieval_manager._update_bm25_index(chunked_documents)
-                
-                # 最終檢查狀態並更新
-                file_info = self.db_manager.get_file_info(file_id)
-                if file_info and file_info['status'] == 'cancelled':
-                    log_message(f"文件 {file_id} 處理被取消，中止狀態更新")
-                    return
-                
-                # 更新 RAG Manager 資料庫中的狀態
-                self.db_manager.update_file_status(file_id, 'processed', len(chunked_documents))
-                
-                # 嘗試更新 Django 資料庫中的狀態
-                try:
-                    from django.apps import apps
-                    File = apps.get_model('api', 'File')
-                    file_obj = File.objects.get(id=file_id)
-                    file_obj.status = 'processed'
-                    file_obj.chunks_count = len(chunked_documents)
-                    file_obj.save()
-                    log_message(f"成功更新 Django 資料庫中文件 {file_id} 的狀態為 processed，塊數為 {len(chunked_documents)}")
-                except Exception as e:
-                    log_message(f"更新 Django 資料庫中文件 {file_id} 狀態時出錯: {str(e)}")
-                    # 錯誤不影響主要處理流程
-            else:
-                self.db_manager.update_file_status(file_id, 'error')
-                # 嘗試更新 Django 資料庫中的狀態
-                try:
-                    from django.apps import apps
-                    File = apps.get_model('api', 'File')
-                    file_obj = File.objects.get(id=file_id)
-                    file_obj.status = 'error'
-                    file_obj.save()
-                    log_message(f"成功更新 Django 資料庫中文件 {file_id} 的狀態為 error")
-                except Exception as e:
-                    log_message(f"更新 Django 資料庫中文件 {file_id} 狀態時出錯: {str(e)}")
-                    # 錯誤不影響主要處理流程
-        except Exception as e:
-            log_message(f"處理文件 {file_id} 時出錯: {str(e)}")
-            self.db_manager.update_file_status(file_id, 'error')
-            # 嘗試更新 Django 資料庫中的狀態
+            # 更新 Django 文件狀態
             try:
                 from django.apps import apps
                 File = apps.get_model('api', 'File')
                 file_obj = File.objects.get(id=file_id)
                 file_obj.status = 'error'
                 file_obj.save()
-                log_message(f"成功更新 Django 資料庫中文件 {file_id} 的狀態為 error")
+            except Exception as e:
+                log_message(f"更新文件狀態時出錯: {str(e)}")
+            return
+        
+        # 設置文件狀態為處理中
+        try:
+            from django.apps import apps
+            File = apps.get_model('api', 'File')
+            file_obj = File.objects.get(id=file_id)
+            file_obj.status = 'processing'
+            file_obj.save()
+        except Exception as e:
+            log_message(f"更新文件狀態時出錯: {str(e)}")
+            return
+        
+        try:
+            # 調用文件處理器處理文件
+            chunked_documents = self.file_processor.process_file(file_id, file_path)
+            
+            # 檢查文件狀態
+            try:
+                file_obj = File.objects.get(id=file_id)
+                if file_obj.status == 'cancelled':
+                    log_message(f"文件 {file_id} 處理被取消，中止後續操作")
+                    return
+            except Exception:
+                pass
+            
+            # 如果成功處理，更新 BM25 和狀態
+            if chunked_documents:
+                if self.settings.get('use_bm25', True):
+                    # 再次檢查狀態
+                    try:
+                        file_obj = File.objects.get(id=file_id)
+                        if file_obj.status == 'cancelled':
+                            log_message(f"文件 {file_id} 處理被取消，中止 BM25 索引更新")
+                            return
+                    except Exception:
+                        pass
+                    self.retrieval_manager._update_bm25_index(chunked_documents)
+                
+                # 最終檢查狀態並更新
+                try:
+                    file_obj = File.objects.get(id=file_id)
+                    if file_obj.status == 'cancelled':
+                        log_message(f"文件 {file_id} 處理被取消，中止狀態更新")
+                        return
+                    
+                    # 更新 Django 資料庫中的狀態
+                    file_obj.status = 'processed'
+                    file_obj.chunks_count = len(chunked_documents)
+                    file_obj.save()
+                    log_message(f"成功更新文件 {file_id} 的狀態為 processed，塊數為 {len(chunked_documents)}")
+                except Exception as e:
+                    log_message(f"更新文件 {file_id} 狀態時出錯: {str(e)}")
+            else:
+                # 處理失敗，更新狀態為錯誤
+                try:
+                    file_obj = File.objects.get(id=file_id)
+                    file_obj.status = 'error'
+                    file_obj.save()
+                    log_message(f"文件 {file_id} 處理失敗，狀態已更新為 error")
+                except Exception as e:
+                    log_message(f"更新文件 {file_id} 狀態時出錯: {str(e)}")
+        except Exception as e:
+            log_message(f"處理文件 {file_id} 時出錯: {str(e)}")
+            # 更新狀態為錯誤
+            try:
+                file_obj = File.objects.get(id=file_id)
+                file_obj.status = 'error'
+                file_obj.save()
+                log_message(f"文件 {file_id} 處理出錯，狀態已更新為 error")
             except Exception as django_err:
-                log_message(f"更新 Django 資料庫中文件 {file_id} 狀態時出錯: {str(django_err)}")
-                # 錯誤不影響主要處理流程
+                log_message(f"更新文件 {file_id} 狀態時出錯: {str(django_err)}")
     
     def delete_file_from_vectorstore(self, file_id: str) -> None:
         """
@@ -389,15 +456,11 @@ class RAGManager:
                     file_obj = File.objects.get(id=file_id)
                     file_name = file_obj.original_filename
                 except Exception:
-                    # 如果Django數據庫獲取失敗，嘗試從RAG數據庫獲取
-                    file_info = self.db_manager.get_file_info(file_id)
-                    if file_info:
-                        file_name = file_info.get('original_filename', 'Unknown')
+                    # 如果Django數據庫獲取失敗，使用預設值
+                    file_name = "Unknown"
             except Exception:
-                # 如果Django導入失敗，直接從RAG數據庫獲取
-                file_info = self.db_manager.get_file_info(file_id)
-                if file_info:
-                    file_name = file_info.get('original_filename', 'Unknown')
+                # 如果Django導入失敗，使用預設值
+                file_name = "Unknown"
             
             # 提取實際文檔內容
             content = doc.page_content
@@ -465,15 +528,28 @@ class RAGManager:
             return False
         
         # 檢查文件狀態
-        file_info = self.db_manager.get_file_info(file_id)
-        if file_info and file_info['status'] == 'cancelled':
-            log_message(f"文件 {file_id} 添加被取消，中止後續操作")
-            return False
+        try:
+            from django.apps import apps
+            File = apps.get_model('api', 'File')
+            file_obj = File.objects.get(id=file_id)
+            if file_obj.status == 'cancelled':
+                log_message(f"文件 {file_id} 添加被取消，中止後續操作")
+                return False
+        except Exception:
+            pass
         
         if self.settings.get('use_bm25', True):
             self.retrieval_manager._update_bm25_index(chunked_documents)
         
-        self.db_manager.add_file(file_id, original_filename, file_path, 'processed', len(chunked_documents))
+        # 更新 Django 文件狀態
+        try:
+            file_obj = File.objects.get(id=file_id)
+            file_obj.status = 'processed'
+            file_obj.chunks_count = len(chunked_documents)
+            file_obj.save()
+        except Exception as e:
+            log_message(f"更新文件狀態時出錯: {str(e)}")
+        
         return True
     
     def delete_file(self, file_id: str) -> bool:
@@ -499,16 +575,11 @@ class RAGManager:
                 except File.DoesNotExist:
                     pass
             except Exception:
-                # 如果無法從Django模型獲取，則嘗試從RAG數據庫獲取
-                file_info = self.db_manager.get_file_info(file_id)
-                if file_info:
-                    file_path = file_info.get('file_path')
+                # 如果無法從Django模型獲取，繼續執行刪除操作
+                pass
             
             # 無論如何都刪除向量庫中的資料
             self.delete_file_from_vectorstore(file_id)
-            
-            # 刪除RAG數據庫中的記錄
-            self.db_manager.delete_file(file_id)
             
             # 只有當文件路徑存在時才嘗試刪除實體檔案
             if file_path and os.path.exists(file_path):
@@ -536,4 +607,18 @@ class RAGManager:
         Returns:
             是否成功
         """
-        return self.settings_manager.save_settings(self.settings)
+        try:
+            from api.models import Setting
+            setting_obj = Setting.load()
+            
+            # 更新設置
+            for key, value in self.settings.items():
+                if hasattr(setting_obj, key):
+                    setattr(setting_obj, key, value)
+            
+            setting_obj.save()
+            log_message("設置已保存到 Django 數據庫")
+            return True
+        except Exception as e:
+            log_message(f"保存設置時出錯: {str(e)}")
+            return False

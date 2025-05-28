@@ -245,8 +245,9 @@ export class KnowledgeBaseComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (data) => {
-          this.filesCount = data.files_count;
-          this.chunksCount = data.chunks_count;
+          // 優先使用 processed_files 和 vector_count 字段
+          this.filesCount = data.processed_files !== undefined ? data.processed_files : data.files_count;
+          this.chunksCount = data.vector_count !== undefined ? data.vector_count : data.chunks_count;
         },
         error: (error) => {
           //console.error('載入知識庫狀態出錯:', error);

@@ -34,8 +34,18 @@ class File(models.Model):
     def __str__(self):
         return self.original_filename
 
+class Conversation(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    title = models.CharField(max_length=255, default="新對話")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return self.title
+
 class ChatMessage(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    conversation = models.ForeignKey(Conversation, related_name='messages', on_delete=models.CASCADE, null=True)
     user_message = models.TextField()
     assistant_message = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
@@ -45,10 +55,10 @@ class ChatMessage(models.Model):
     def __str__(self):
         return f"Chat {self.id} at {self.timestamp}"
 
-class Settings(models.Model):
+class Setting(models.Model):
     # Singleton model for application settings
     id = models.AutoField(primary_key=True) # Ensures pk=1 for singleton
-    embedding_model = models.CharField(max_length=255, default='text-embedding-3-small')
+    embedding_model = models.CharField(max_length=255, default='BAAI/bge-large-zh')
     llm_model = models.CharField(max_length=255, default='gpt-3.5-turbo')
     temperature = models.FloatField(default=0.1)
     max_tokens = models.IntegerField(default=1000)
@@ -62,12 +72,12 @@ class Settings(models.Model):
     use_contextual_embeddings = models.BooleanField(default=True)
     use_hybrid = models.BooleanField(default=True)
     use_intelligent_splitting = models.BooleanField(default=True)
-    openai_api_key = models.CharField(max_length=255, blank=True, null=True) 
+    openai_api_key = models.CharField(max_length=255, blank=True, null=True)
 
     def save(self, *args, **kwargs):
         # Enforce singleton pattern
         self.pk = 1 
-        super(Settings, self).save(*args, **kwargs)
+        super(Setting, self).save(*args, **kwargs)
 
     @classmethod
     def load(cls):
@@ -84,7 +94,27 @@ class Settings(models.Model):
             # Fallback if .env is in the api app directory (less ideal)
             load_dotenv()
             
-        obj, created = cls.objects.get_or_create(pk=1)
+        # 使用 get_or_create 確保有預設資料，如果不存在就創建
+        obj, created = cls.objects.get_or_create(
+            pk=1,
+            defaults={
+                'embedding_model': 'BAAI/bge-large-zh',
+                'llm_model': 'gpt-3.5-turbo',
+                'temperature': 0.1,
+                'max_tokens': 1000,
+                'chunk_size': 1000,
+                'chunk_overlap': 200,
+                'top_k': 4,
+                'use_rag_fusion': False,
+                'use_reranking': False,
+                'use_cot': False,
+                'use_bm25': True,
+                'use_contextual_embeddings': True,
+                'use_hybrid': True,
+                'use_intelligent_splitting': True,
+                'openai_api_key': None
+            }
+        )
         
         env_api_key = os.getenv('OPENAI_API_KEY')
         # Prioritize env var for API key, update DB if different or not set
@@ -97,7 +127,7 @@ class Settings(models.Model):
         return obj
 
     def __str__(self):
-        return "Application Settings"
+        return "Application Setting"
 
     def to_dict(self):
         """Converts the model instance to a dictionary, excluding the singleton ID."""

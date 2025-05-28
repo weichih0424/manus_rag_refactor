@@ -12,13 +12,14 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.shortcuts import get_object_or_404
 from django.conf import settings # For MEDIA_ROOT
 
-from .models import File, Tag, ChatMessage, Settings as SettingsModel # Renamed to avoid conflict with django.conf.settings
+from .models import File, Tag, ChatMessage, Setting as SettingModel, Conversation # 添加 Conversation 導入
 from .serializers import (
     FileSerializer,
     FileUploadSerializer, 
     TagSerializer,
     ChatMessageSerializer,
-    SettingsSerializer,
+    ConversationSerializer, # 添加 ConversationSerializer 導入
+    SettingSerializer,
     QuerySerializer, # From user's original serializers
     FileTagsSerializer, # Added FileTagsSerializer
     StatusResponseSerializer,
@@ -197,21 +198,49 @@ class QueryView(APIView):
         
         question = serializer.validated_data["question"]
         show_sources = serializer.validated_data.get("show_sources", True)
+        conversation_id = request.data.get("conversation_id")
         
         try:
             answer, related_docs = rag_manager_singleton.query(question)
-            # 創建聊天消息
+            
+            # 處理對話關聯
             chat_id = str(uuid.uuid4())
-            chat_message = ChatMessage.objects.create(
-                id=chat_id,
-                user_message=question, 
-                assistant_message=answer, 
-                related_docs=related_docs,
-                show_sources=show_sources
-            )
+            chat_message_data = {
+                'id': chat_id,
+                'user_message': question, 
+                'assistant_message': answer, 
+                'related_docs': related_docs,
+                'show_sources': show_sources
+            }
+            
+            # 如果提供了對話ID，則關聯到該對話
+            if conversation_id:
+                try:
+                    conversation = Conversation.objects.get(id=conversation_id)
+                    chat_message = ChatMessage.objects.create(
+                        **chat_message_data,
+                        conversation=conversation
+                    )
+                    # 更新對話的最後修改時間
+                    conversation.save()  # 觸發 auto_now 欄位更新
+                except Conversation.DoesNotExist:
+                    return Response(
+                        {"error": f"對話 {conversation_id} 不存在"},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            else:
+                # 如果沒有提供對話ID，可以創建一個新的對話或使用獨立消息
+                # 創建一個新的對話
+                title = question[:50] + "..." if len(question) > 50 else question
+                conversation = Conversation.objects.create(title=title)
+                chat_message = ChatMessage.objects.create(
+                    **chat_message_data,
+                    conversation=conversation
+                )
             
             return Response({
                 "id": str(chat_message.id),
+                "conversation_id": str(chat_message.conversation.id) if chat_message.conversation else None,
                 "user_message": question,
                 "assistant_message": answer, 
                 "related_docs": related_docs,
@@ -221,21 +250,78 @@ class QueryView(APIView):
             logger.exception(f"Error processing query: {e}")
             return Response({"error": f"Failed to process query: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+class ConversationViewSet(viewsets.ModelViewSet):
+    queryset = Conversation.objects.all().order_by("-updated_at")
+    serializer_class = ConversationSerializer
+    
+    @action(detail=True, methods=["get"])
+    def messages(self, request, pk=None):
+        """獲取特定對話的所有消息"""
+        conversation = self.get_object()
+        messages = ChatMessage.objects.filter(conversation=conversation).order_by("timestamp")
+        serializer = ChatMessageSerializer(messages, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=["delete"])
+    def clear_messages(self, request, pk=None):
+        """清除特定對話的所有消息"""
+        conversation = self.get_object()
+        ChatMessage.objects.filter(conversation=conversation).delete()
+        return Response({"success": True})
+
 class ChatMessageViewSet(viewsets.ModelViewSet):
     queryset = ChatMessage.objects.all().order_by("timestamp")
     serializer_class = ChatMessageSerializer
     http_method_names = ["get", "post", "delete", "head", "options"]  # 確保包含post方法
     
+    def list(self, request):
+        # 如果指定了對話ID，則過濾該對話的消息
+        conversation_id = request.query_params.get('conversation_id', None)
+        if conversation_id:
+            queryset = ChatMessage.objects.filter(conversation_id=conversation_id).order_by("timestamp")
+        else:
+            # 如果沒有指定對話ID，則返回所有沒有關聯對話的消息（向後兼容）
+            queryset = ChatMessage.objects.filter(conversation__isnull=True).order_by("timestamp")
+        serializer = self.serializer_class(queryset, many=True)
+        return Response(serializer.data)
+    
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy()
+        
+        # 處理對話關聯
+        conversation_id = data.get('conversation_id')
+        if conversation_id:
+            try:
+                conversation = Conversation.objects.get(id=conversation_id)
+            except Conversation.DoesNotExist:
+                return Response(
+                    {"error": f"對話 {conversation_id} 不存在"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        else:
+            # 如果沒有提供對話ID，創建一個新的對話
+            # 用第一條用戶消息作為對話標題
+            title = data.get('user_message', '')[:50] + "..." if len(data.get('user_message', '')) > 50 else data.get('user_message', '新對話')
+            conversation = Conversation.objects.create(title=title)
+        
+        # 添加對話關聯
+        data['conversation'] = conversation.id
+        
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        
+        # 更新對話的最後修改時間
+        conversation.save()  # 觸發 auto_now 欄位更新
+        
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
     @action(detail=False, methods=["delete"], name="Clear History")
     def clear(self, request):
-        """清空所有聊天歷史"""
-        try:
-            ChatMessage.objects.all().delete()
-            return Response({"success": True}, status=status.HTTP_200_OK)
-        except Exception as e:
-            logger.exception(f"清空聊天歷史時出錯: {e}")
-            return Response({"success": False, "error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
+        ChatMessage.objects.all().delete()
+        return Response({"success": True})
+
     @action(detail=False, methods=["post"], url_path="regenerate", url_name="regenerate")
     def regenerate(self, request):
         """重新生成回答，嘗試使用不同的策略"""
@@ -246,10 +332,19 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
         question = serializer.validated_data["question"]
         chat_id = serializer.validated_data.get("id")
         show_sources = serializer.validated_data.get("show_sources", True)
+        conversation_id = request.data.get('conversation_id')
         
         try:
             # 使用不同策略獲取回答
             answer, related_docs = rag_manager_singleton.query(question, use_different_strategy=True)
+            
+            # 準備消息數據
+            chat_message_data = {
+                'user_message': question,
+                'assistant_message': answer,
+                'related_docs': related_docs,
+                'show_sources': show_sources
+            }
             
             # 更新或創建對話記錄
             if chat_id:
@@ -259,27 +354,75 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
                     chat_message.related_docs = related_docs
                     chat_message.show_sources = show_sources
                     chat_message.save()
+                    
+                    # 如果消息有關聯的對話，更新對話的修改時間
+                    if chat_message.conversation:
+                        chat_message.conversation.save()
+                    
                 except ChatMessage.DoesNotExist:
+                    # 如果找不到原來的消息但有提供對話ID
+                    if conversation_id:
+                        try:
+                            conversation = Conversation.objects.get(id=conversation_id)
+                            chat_message = ChatMessage.objects.create(
+                                id=chat_id or str(uuid.uuid4()),
+                                conversation=conversation,
+                                **chat_message_data
+                            )
+                            # 更新對話時間
+                            conversation.save()
+                        except Conversation.DoesNotExist:
+                            # 找不到對話，創建新對話
+                            title = question[:50] + "..." if len(question) > 50 else question
+                            conversation = Conversation.objects.create(title=title)
+                            chat_message = ChatMessage.objects.create(
+                                id=chat_id or str(uuid.uuid4()),
+                                conversation=conversation,
+                                **chat_message_data
+                            )
+                    else:
+                        # 既找不到原消息也沒有提供對話ID，創建一個新獨立消息
+                        chat_id = str(uuid.uuid4())
+                        chat_message = ChatMessage.objects.create(
+                            id=chat_id,
+                            **chat_message_data
+                        )
+            else:
+                # 沒有提供舊消息ID
+                if conversation_id:
+                    # 但有提供對話ID，添加到該對話
+                    try:
+                        conversation = Conversation.objects.get(id=conversation_id)
+                        chat_message = ChatMessage.objects.create(
+                            id=str(uuid.uuid4()),
+                            conversation=conversation,
+                            **chat_message_data
+                        )
+                        # 更新對話時間
+                        conversation.save()
+                    except Conversation.DoesNotExist:
+                        # 找不到對話，創建新對話
+                        title = question[:50] + "..." if len(question) > 50 else question
+                        conversation = Conversation.objects.create(title=title)
+                        chat_message = ChatMessage.objects.create(
+                            id=str(uuid.uuid4()),
+                            conversation=conversation,
+                            **chat_message_data
+                        )
+                else:
+                    # 都沒有提供，創建獨立消息
                     chat_id = str(uuid.uuid4())
+                    title = question[:50] + "..." if len(question) > 50 else question
+                    conversation = Conversation.objects.create(title=title)
                     chat_message = ChatMessage.objects.create(
                         id=chat_id,
-                        user_message=question,
-                        assistant_message=answer,
-                        related_docs=related_docs,
-                        show_sources=show_sources
+                        conversation=conversation,
+                        **chat_message_data
                     )
-            else:
-                chat_id = str(uuid.uuid4())
-                chat_message = ChatMessage.objects.create(
-                    id=chat_id,
-                    user_message=question,
-                    assistant_message=answer,
-                    related_docs=related_docs,
-                    show_sources=show_sources
-                )
             
             return Response({
                 "id": str(chat_message.id),
+                "conversation_id": str(chat_message.conversation.id) if chat_message.conversation else None,
                 "user_message": question,
                 "assistant_message": answer,
                 "related_docs": related_docs,
@@ -290,27 +433,29 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
             return Response({"error": f"重新生成回答時出錯: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # Settings View (from my previous version, assuming it's needed)
-class SettingsAPIView(generics.RetrieveUpdateAPIView):
-    serializer_class = SettingsSerializer
-
+class SettingAPIView(generics.RetrieveUpdateAPIView):
+    serializer_class = SettingSerializer
+    
     def get_object(self):
-        settings_obj, _ = SettingsModel.objects.get_or_create(pk=1) # Using the Django model
-        # Ensure API key is loaded from .env if not set
-        if not settings_obj.openai_api_key:
-            settings_obj.openai_api_key = os.getenv("OPENAI_API_KEY")
-            if settings_obj.openai_api_key: # Save only if a key was found
-                 settings_obj.save()
-        return settings_obj
-
+        # 使用 get_or_create 確保有預設資料
+        setting_obj, _ = SettingModel.objects.get_or_create(pk=1) # Using the Django model
+        
+        # 如果沒有 API 金鑰，嘗試從環境變數獲取
+        if not setting_obj.openai_api_key:
+            setting_obj.openai_api_key = os.getenv("OPENAI_API_KEY")
+            if setting_obj.openai_api_key: # Save only if a key was found
+                setting_obj.save()
+        return setting_obj
+    
     def perform_update(self, serializer):
-        instance = serializer.save() # Saves to Django DB
-        logger.info(f"Django SettingsModel updated via API: {serializer.validated_data}")
+        serializer.save()
+        # Update the RAGManager's internal settings
+        # The user's RAGManager has update_settings and save_settings methods
+        rag_manager_singleton.update_settings(serializer.validated_data)
+        # rag_manager_singleton.save_settings() # This saves to rag.db  # 註解掉 rag.db 的保存
+        logger.info("RAGManager settings updated.")  # 修改日誌訊息
         try:
-            # Update the RAGManager's internal settings
-            # The user's RAGManager has update_settings and save_settings methods
-            rag_manager_singleton.update_settings(serializer.validated_data)
-            rag_manager_singleton.save_settings() # This saves to rag.db
-            logger.info("RAGManager settings updated and saved to its DB.")
+            rag_manager_singleton.save_settings()
         except Exception as e:
             logger.exception(f"Error updating RAG manager after settings save: {e}")
 
@@ -354,12 +499,15 @@ def knowledge_base_status(request):
             except Exception as e:
                 logger.error(f"更新文件記錄時出錯: {e}")
         
+        # 從Django模型中獲取文件數量
+        django_files_count = File.objects.count()
+        
         # 與前端模型保持一致的欄位名稱
         status_info = {
             "total_files": total_files,
             "processed_files": processed_files,
             "vector_count": vector_count,
-            "files_count": processed_files,  # 只計算已處理完成的文件數
+            "files_count": django_files_count,  # 使用Django中的文件數量，而不是僅處理完成的數量
             "chunks_count": vector_count,
             "is_ready": total_files > 0 and processed_files > 0,
             "last_updated": datetime.now().isoformat()

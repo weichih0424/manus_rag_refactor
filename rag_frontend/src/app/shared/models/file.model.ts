@@ -32,6 +32,11 @@ export interface UploadProgressItem {
 }
 
 export interface KnowledgeBaseStatus {
+    total_files: number;
+    processed_files: number;
+    vector_count: number;
     files_count: number;
     chunks_count: number;
+    is_ready: boolean;
+    last_updated: string;
 } 

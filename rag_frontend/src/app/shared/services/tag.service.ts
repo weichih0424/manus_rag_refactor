@@ -17,16 +17,16 @@ export class TagService {
 
   // 獲取所有標籤
   getTags(): Observable<TagModel[]> {
-    return this.http.get<TagModel[]>(`${this.apiUrl}/tags/`);
+    return this.http.get<TagModel[]>(`${this.apiUrl}/tag/`);
   }
   
   // 新增標籤 - 返回Django REST框架創建的標籤對象
   addTag(tag: TagModel): Observable<TagModel> {
-    return this.http.post<TagModel>(`${this.apiUrl}/tags/`, tag);
+    return this.http.post<TagModel>(`${this.apiUrl}/tag/`, tag);
   }
   
   // 刪除標籤 - Django REST框架通常返回204 No Content
   deleteTag(tagId: string): Observable<any> {
-    return this.http.delete<any>(`${this.apiUrl}/tags/${tagId}/`);
+    return this.http.delete<any>(`${this.apiUrl}/tag/${tagId}/`);
   }
 } 

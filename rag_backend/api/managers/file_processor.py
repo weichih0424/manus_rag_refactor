@@ -1,15 +1,14 @@
 """
-File Processor - 文件處理與文檔管理
-包含文檔清洗、上下文生成和智能分割功能
+文件處理器 - 負責處理各種文件格式
 """
 import os
 import re
-import sys
-import sqlite3
-from typing import List, Optional
-from langchain_community.document_loaders import PyPDFLoader, TextLoader, Docx2txtLoader, CSVLoader, UnstructuredHTMLLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from typing import List, Dict, Any
 from langchain.schema import Document
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_community.document_loaders import (
+    PyPDFLoader, TextLoader, Docx2txtLoader, CSVLoader, UnstructuredHTMLLoader
+)
 
 # 自定義日誌函數，確保輸出後立即刷新
 def log_message(message):
@@ -64,15 +63,27 @@ class FileProcessor:
         Returns:
             是否被取消 (True 表示已取消)
         """
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        cursor.execute('SELECT status FROM files WHERE id = ?', (file_id,))
-        result = cursor.fetchone()
-        conn.close()
-        if result and result[0] == 'cancelled':
-            log_message(f"文件 {file_id} 已被取消")
-            return True
-        return False
+        try:
+            # 使用 Django ORM 檢查文件狀態
+            import django
+            from django.apps import apps
+            
+            # 確保 Django 已設置
+            if not django.conf.settings.configured:
+                import os
+                os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'rag_backend.settings')
+                django.setup()
+            
+            File = apps.get_model('api', 'File')
+            file_obj = File.objects.get(id=file_id)
+            
+            if file_obj.status == 'cancelled':
+                log_message(f"文件 {file_id} 已被取消")
+                return True
+            return False
+        except Exception as e:
+            log_message(f"檢查文件取消狀態時出錯: {str(e)}")
+            return False
     
     def _clean_documents(self, documents: List[Document]) -> List[Document]:
         """

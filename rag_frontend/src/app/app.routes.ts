@@ -8,6 +8,7 @@ export const routes: Routes = [
     data: { preload: true }
   },
   { path: 'chat', loadComponent: () => import('./chat/chat.component').then(m => m.ChatComponent) },
+  { path: 'chat/:id', loadComponent: () => import('./chat/chat.component').then(m => m.ChatComponent) },
   { path: 'settings_base', loadComponent: () => import('./settings-base/settings-base.component').then(m => m.SettingsBaseComponent) },
   { path: 'settings_system', loadComponent: () => import('./settings-system/settings-system.component').then(m => m.SettingsSystemComponent) },
   { path: '**', redirectTo: '', pathMatch: 'full' }

@@ -19,7 +19,7 @@ export class FileService {
 
   // 獲取所有文件
   getFiles(): Observable<FileModel[]> {
-    return this.http.get<FileModel[]>(`${this.apiUrl}/files/`);
+    return this.http.get<FileModel[]>(`${this.apiUrl}/file/`);
   }
 
   // 獲取知識庫狀態
@@ -29,13 +29,13 @@ export class FileService {
 
   // 刪除文件
   deleteFile(fileId: string): Observable<any> {
-    return this.http.delete(`${this.apiUrl}/files/${fileId}/`);
+    return this.http.delete(`${this.apiUrl}/file/${fileId}/`);
   }
 
   // 取消文件處理
   cancelProcessing(fileId: string): Observable<any> {
     console.log(`向後端API發送取消處理請求: ${fileId}`);
-    return this.http.post(`${this.apiUrl}/files/${fileId}/cancel_processing/`, {})
+    return this.http.post(`${this.apiUrl}/file/${fileId}/cancel_processing/`, {})
       .pipe(
         catchError(error => {
           console.error(`取消處理API失敗: ${error.message || error}`);
@@ -47,7 +47,7 @@ export class FileService {
 
   // 檢查單個文件狀態（強制同步）
   getFileStatus(fileId: string): Observable<FileModel> {
-    return this.http.get<FileModel>(`${this.apiUrl}/files/${fileId}/check_status/`);
+    return this.http.get<FileModel>(`${this.apiUrl}/file/${fileId}/check_status/`);
   }
 
   // 應用標籤
@@ -61,7 +61,7 @@ export class FileService {
     // 確保tags中的每個標籤都是字符串
     const processedTags = tags.map(tag => typeof tag === 'string' ? tag : (tag && tag.name ? tag.name : tag));
     
-    return this.http.post(`${this.apiUrl}/files/tags/`, { file_ids: fileIds, tags: processedTags }, httpOptions);
+    return this.http.post(`${this.apiUrl}/file/tags/`, { file_ids: fileIds, tags: processedTags }, httpOptions);
   }
 
   // 移除標籤
@@ -75,7 +75,7 @@ export class FileService {
     // 確保tags中的每個標籤都是字符串
     const processedTags = tags.map(tag => typeof tag === 'string' ? tag : (tag && tag.name ? tag.name : tag));
     
-    return this.http.post(`${this.apiUrl}/files/remove_tags/`, { file_ids: fileIds, tags: processedTags }, httpOptions);
+    return this.http.post(`${this.apiUrl}/file/remove_tags/`, { file_ids: fileIds, tags: processedTags }, httpOptions);
   }
 
   // 上傳文件（使用XMLHttpRequest以支持進度監控）
@@ -87,7 +87,7 @@ export class FileService {
       const formData = new FormData();
       formData.append('file', file);
 
-      xhr.open('POST', `${this.apiUrl}/files/upload_file/`, true);
+      xhr.open('POST', `${this.apiUrl}/file/upload_file/`, true);
       xhr.withCredentials = true; // 添加跨域憑證支持
 
       xhr.onload = () => {

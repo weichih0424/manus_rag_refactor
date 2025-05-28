@@ -1,5 +1,6 @@
 # /home/ubuntu/manus_rag_refactor/backend_merged/api/rag_instance.py
 import os
+import sys
 from django.conf import settings
 from .managers.rag_manager import RAGManager # Assuming RAGManager is in api/managers/
 
@@ -12,7 +13,8 @@ CHROMA_DIR = os.path.join(BASE_DIR, 'chroma_db')
 # So, files are at BASE_DIR / "media" / "uploads" / <filename>
 RAG_UPLOAD_DIR_BASE = settings.MEDIA_ROOT # RAGManager might need the root of media files
 
-RAG_DB_PATH = os.path.join(BASE_DIR, 'rag.db') # User's RAG specific SQLite DB
+# 使用 Django 的數據庫路徑作為 RAGManager 的數據庫路徑
+RAG_DB_PATH = os.path.join(BASE_DIR, 'db.sqlite3')
 
 # Ensure directories exist
 os.makedirs(CHROMA_DIR, exist_ok=True)
@@ -27,6 +29,10 @@ os.makedirs(CHROMA_DIR, exist_ok=True)
 rag_manager_singleton = RAGManager(
     chroma_db_dir=CHROMA_DIR,
     upload_dir=str(RAG_UPLOAD_DIR_BASE), # Pass the string representation of Path object
-    db_path=RAG_DB_PATH
+    db_path=RAG_DB_PATH  # 使用 Django 的數據庫路徑
 )
+
+# 初始化資料表
+# rag_manager_singleton.settings_manager._initialize_settings_table()  # 註解掉 rag.db 的初始化
+# rag_manager_singleton.db_manager._initialize_database()  # 註解掉 rag.db 的初始化
 

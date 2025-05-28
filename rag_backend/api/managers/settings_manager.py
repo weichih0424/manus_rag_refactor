@@ -5,7 +5,7 @@ Settings Manager - 設置管理
 from typing import Dict, Any
 import sqlite3
 
-class SettingsManager:
+class SettingManager:
     """設置管理器類，負責設置的加載、保存和更新"""
     
     def __init__(self, db_path: str):
@@ -32,7 +32,8 @@ class SettingsManager:
             'use_hybrid': True,
             'use_intelligent_splitting': True
         }
-        self._initialize_settings_table()
+        # 不再自動初始化表格，依賴 Django 的遷移系統
+        # self._initialize_settings_table()
 
     def _initialize_settings_table(self) -> None:
         """
@@ -184,6 +185,6 @@ class SettingsManager:
             return True
         except Exception as e:
             print(f"保存設置時出錯: {str(e)}")
-            return False
+            return False        
         finally:
             conn.close()
