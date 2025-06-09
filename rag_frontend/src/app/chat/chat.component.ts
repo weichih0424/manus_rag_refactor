@@ -46,6 +46,9 @@ export class ChatComponent implements OnInit {
   editingConversationId: string | null = null; // 正在編輯標題的對話ID
   editingTitle: string = ''; // 編輯中的標題內容
   
+  // 來源詳情模態框相關屬性
+  selectedSource: RelatedDoc | null = null; // 選中的來源
+  
   constructor(
     private chatService: ChatService,
     private route: ActivatedRoute,
@@ -106,7 +109,7 @@ export class ChatComponent implements OnInit {
         
         if (conversationId) {
           // 如果URL中有對話ID，加載該對話
-          console.log('從URL加載對話:', conversationId);
+          //console.log('從URL加載對話:', conversationId);
           this.currentConversationId = conversationId;
           this.isTemporaryConversation = false; // 重置臨時對話狀態
           this.loadChatHistory(conversationId);
@@ -116,33 +119,33 @@ export class ChatComponent implements OnInit {
         }
       });
     } catch (error) {
-      console.error('初始化聊天系統時出錯:', error);
+      //console.error('初始化聊天系統時出錯:', error);
       this.addSystemMessage('初始化聊天系統時出錯，請刷新頁面重試。');
     }
   }
 
   // 處理沒有指定對話ID的情況
   private handleNoConversationId(): void {
-    console.log('處理沒有對話ID的情況，當前對話數量:', this.conversations.length);
-    console.log('isTemporaryConversation 狀態:', this.isTemporaryConversation);
+    //console.log('處理沒有對話ID的情況，當前對話數量:', this.conversations.length);
+    //console.log('isTemporaryConversation 狀態:', this.isTemporaryConversation);
     
     // 檢查是否是從新對話按鈕來的（通過檢查isTemporaryConversation標記）
     if (this.isTemporaryConversation) {
       // 如果是新對話，保持在空白狀態
-      console.log('這是新對話，保持空白狀態');
+      //console.log('這是新對話，保持空白狀態');
       this.addSystemMessage('開始新對話。您可以向我詢問關於您知識庫中的任何問題。');
       return;
     }
     
     if (this.conversations.length > 0) {
       // 有對話時，導航到最新的對話
-      console.log('找到現有對話，導航到最新對話:', this.conversations[0].id);
+      //console.log('找到現有對話，導航到最新對話:', this.conversations[0].id);
       this.currentConversationId = this.conversations[0].id;
       this.isTemporaryConversation = false;
       this.router.navigate(['/chat', this.currentConversationId]);
     } else {
       // 沒有對話時，設置為臨時對話狀態，這樣用戶發送第一條消息時會創建新對話
-      console.log('沒有現有對話，設置為臨時對話狀態');
+      //console.log('沒有現有對話，設置為臨時對話狀態');
       this.isTemporaryConversation = true; // 改為true，讓第一條消息觸發新對話創建
       this.addSystemMessage('歡迎使用 RAG 知識庫系統！您可以向我詢問關於您知識庫中的任何問題。');
     }
@@ -151,10 +154,10 @@ export class ChatComponent implements OnInit {
   // 加載所有對話
   async loadConversations(): Promise<void> {
     try {
-      console.log('開始加載對話列表...');
+      //console.log('開始加載對話列表...');
       const conversationsData = await this.chatService.getConversations().toPromise();
       this.conversations = conversationsData || [];
-      console.log('對話列表加載完成:', this.conversations.length, '個對話');
+      //console.log('對話列表加載完成:', this.conversations.length, '個對話');
     } catch (error) {
       console.error('加載對話列表時出錯:', error);
       this.conversations = [];
@@ -183,8 +186,8 @@ export class ChatComponent implements OnInit {
   // 創建新對話
   async createNewConversation(): Promise<void> {
     try {
-      console.log('開啟新的臨時對話框');
-      console.log('設置前 isTemporaryConversation:', this.isTemporaryConversation);
+      //console.log('開啟新的臨時對話框');
+      //console.log('設置前 isTemporaryConversation:', this.isTemporaryConversation);
       
       // 立即開啟新的對話框，但不創建後端記錄
       this.currentConversationId = null;
@@ -195,7 +198,7 @@ export class ChatComponent implements OnInit {
       this.currentChatId = null;
       this.lastUserMessage = '';
       
-      console.log('設置後 isTemporaryConversation:', this.isTemporaryConversation);
+      //console.log('設置後 isTemporaryConversation:', this.isTemporaryConversation);
       
       // 直接添加歡迎消息
       this.addSystemMessage('開始新對話。您可以向我詢問關於您知識庫中的任何問題。');
@@ -364,23 +367,23 @@ export class ChatComponent implements OnInit {
           
           // 如果這是臨時對話的第一條消息，處理對話創建
           if (this.isTemporaryConversation) {
-            console.log('臨時對話發送第一條消息，更新狀態');
+            //console.log('臨時對話發送第一條消息，更新狀態');
             this.isTemporaryConversation = false;
             
             // 從響應中獲取對話ID
             if (response.conversation_id) {
               this.currentConversationId = response.conversation_id;
-              console.log('從響應中獲取對話ID:', response.conversation_id);
+              //console.log('從響應中獲取對話ID:', response.conversation_id);
               
               // 更新URL
               this.router.navigate(['/chat', response.conversation_id]);
               
               // 重新加載對話列表以顯示新創建的對話
               this.loadConversations().catch(error => {
-                console.error('重新加載對話列表時出錯:', error);
+                //console.error('重新加載對話列表時出錯:', error);
               });
             } else {
-              console.error('響應中沒有對話ID');
+              //console.error('響應中沒有對話ID');
             }
           } else if (this.currentConversationId) {
             // 如果是現有對話，只需更新對話列表
@@ -389,7 +392,7 @@ export class ChatComponent implements OnInit {
         },
         error: (error) => {
           this.isTyping = false;
-          console.error('發送消息時出錯:', error);
+          //console.error('發送消息時出錯:', error);
           this.addSystemMessage('發送消息時出錯，請稍後再試。');
         }
       });
@@ -494,10 +497,11 @@ export class ChatComponent implements OnInit {
 
   // 切換來源顯示
   toggleSourcesDisplay(): void {
+    // 只保存開關狀態，不立即改變當前顯示
     localStorage.setItem('showSources', this.showSources.toString());
     
-    // 實際上不更改已經加載的消息的來源顯示，只保存設置用於下一條消息
-    this.showToast(`來源列表已${this.showSources ? '顯示' : '隱藏'}`);
+    // 使用 Bootstrap Toast 顯示狀態變化
+    this.showBootstrapToast(`來源列表已${this.showSources ? '顯示' : '隱藏'}`);
   }
 
   // 複製回答內容
@@ -609,29 +613,50 @@ export class ChatComponent implements OnInit {
     }
   }
 
-  // 顯示提示
-  private showToast(message: string): void {
+  // 顯示 Bootstrap Toast 提示
+  private showBootstrapToast(message: string): void {
     if (isPlatformBrowser(this.platformId)) {
       const toast = document.createElement('div');
-      toast.className = 'toast show';
+      toast.className = 'toast align-items-center text-white bg-info border-0';
+      toast.style.position = 'fixed';
+      toast.style.bottom = '20px';
+      toast.style.right = '20px';
+      toast.style.zIndex = '1055';
       toast.innerHTML = `
-        <div class="toast-header">
-          <strong class="me-auto">通知</strong>
-          <button type="button" class="btn-close" onclick="this.parentElement.parentElement.remove()"></button>
+        <div class="d-flex">
+          <div class="toast-body">${message}</div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
         </div>
-        <div class="toast-body">
-          ${message}
-          </div>
       `;
       
       document.body.appendChild(toast);
       
-      // 自動關閉
+      // 使用 Bootstrap Toast API
+      if ((window as any).bootstrap && (window as any).bootstrap.Toast) {
+        const bsToast = new (window as any).bootstrap.Toast(toast);
+        bsToast.show();
+        
+        // 3秒後自動移除
         setTimeout(() => {
-          toast.classList.remove('show');
-        setTimeout(() => toast.remove(), 500);
+          if (toast.parentNode) {
+            toast.remove();
+          }
         }, 3000);
+      } else {
+        // 降級方案：如果 Bootstrap 不可用，使用簡單的顯示方式
+        toast.classList.add('show');
+        setTimeout(() => {
+          if (toast.parentNode) {
+            toast.remove();
+          }
+        }, 3000);
+      }
     }
+  }
+
+  // 顯示提示（保留原有方法，用於其他地方）
+  private showToast(message: string): void {
+    this.showBootstrapToast(message);
   }
 
   // 安全地顯示警告，確保在伺服器端不會出錯
@@ -650,6 +675,34 @@ export class ChatComponent implements OnInit {
     } else {
       console.warn('Server-side confirm:', message);
       return false;
+    }
+  }
+
+  // 顯示來源詳情
+  showSourceDetail(source: RelatedDoc): void {
+    this.selectedSource = source;
+    
+    if (isPlatformBrowser(this.platformId)) {
+      // 使用 Bootstrap 模態框
+      const modalElement = document.getElementById('sourceDetailModal');
+      if (modalElement) {
+        if ((window as any).bootstrap && (window as any).bootstrap.Modal) {
+          const modal = new (window as any).bootstrap.Modal(modalElement);
+          modal.show();
+        }
+      }
+    }
+  }
+
+  // 複製來源內容
+  copySourceContent(): void {
+    if (this.selectedSource && isPlatformBrowser(this.platformId)) {
+      navigator.clipboard.writeText(this.selectedSource.content).then(() => {
+        this.showBootstrapToast('來源內容已複製到剪貼板');
+      }).catch(error => {
+        console.error('複製失敗:', error);
+        this.showBootstrapToast('複製失敗，請手動選擇文字複製');
+      });
     }
   }
 }

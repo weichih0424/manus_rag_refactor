@@ -57,7 +57,6 @@
     border-right: 1px solid #dee2e6;
     height: calc(100vh - 56px);
     overflow-y: auto;
-    transition: all 0.3s ease;
     position: relative;
     z-index: 100;
     
@@ -159,6 +158,18 @@
     
     .conversation-item.active .conversation-actions {
         opacity: 0.7;
+    }
+}
+
+/* 桌面端側邊欄隱藏時的樣式 */
+@media (min-width: 768px) {
+    .conversation-sidebar:not(.open) {
+        display: none;
+    }
+    
+    /* 主內容區域在側邊欄隱藏時的樣式 */
+    .main-content.col-lg-9 {
+        /* 移除過渡動畫，讓切換瞬間完成 */
     }
 }
 
@@ -524,6 +535,104 @@
 .source-list li.empty {
     color: #adb5bd;
     font-style: italic;
+}
+
+/* 來源項目點擊樣式 */
+.source-item {
+    padding: 6px 8px !important;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    position: relative;
+    padding-left: 20px !important;
+}
+
+.source-item:hover {
+    background-color: #e9ecef !important;
+    transform: translateX(2px);
+}
+
+.source-item:active {
+    background-color: #dee2e6 !important;
+}
+
+.source-dot {
+    position: absolute;
+    left: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 6px;
+    height: 6px;
+    background-color: #0d6efd;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.source-item::before {
+    display: none !important; /* 隱藏原來的圓點 */
+}
+
+/* 來源詳情模態框樣式 */
+.source-detail-info {
+    .row {
+        align-items: flex-start;
+    }
+    
+    .col-sm-3 {
+        font-weight: 600;
+        color: #495057;
+    }
+    
+    .col-sm-9 {
+        word-break: break-word;
+    }
+}
+
+.source-content-box {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 12px;
+    max-height: 300px;
+    overflow-y: auto;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.modal-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    
+    .modal-title {
+        color: #495057;
+        font-weight: 600;
+    }
+}
+
+.modal-footer {
+    background-color: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+}
+
+/* Bootstrap Toast 自定義樣式 */
+.toast.align-items-center {
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    min-width: 280px;
+    
+    .toast-body {
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+    
+    .btn-close-white {
+        filter: invert(1) grayscale(100%) brightness(200%);
+    }
 }
 
 /* 相關文檔卡片 */

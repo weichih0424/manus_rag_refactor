@@ -1,7 +1,7 @@
 import { Component, OnInit, PLATFORM_ID, Inject } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { SettingsService, SystemSettings } from '../shared/services/settings.service';
+import { SettingsService, SystemSetting } from '../shared/services/settings.service';
 
 @Component({
   selector: 'app-settings-system',
@@ -12,7 +12,7 @@ import { SettingsService, SystemSettings } from '../shared/services/settings.ser
 })
 export class SettingsSystemComponent implements OnInit {
   // 設置數據
-  settings: SystemSettings = {
+  settings: SystemSetting = {
     embedding_model: 'BAAI/bge-large-zh',
     chunk_size: 1000,
     chunk_overlap: 200,

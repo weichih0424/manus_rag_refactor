@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
-export interface SystemSettings {
+export interface SystemSetting {
   embedding_model: string;
   chunk_size: number;
   chunk_overlap: number;
@@ -28,12 +28,12 @@ export class SettingsService {
   ) { }
 
   // 獲取系統設置
-  getSettings(): Observable<SystemSettings> {
-    return this.http.get<SystemSettings>(`${this.apiUrl}/settings/`);
+  getSettings(): Observable<SystemSetting> {
+    return this.http.get<SystemSetting>(`${this.apiUrl}/setting/`);
   }
 
   // 保存系統設置
-  saveSettings(settings: SystemSettings): Observable<any> {
-    return this.http.post(`${this.apiUrl}/settings/`, settings);
+  saveSettings(setting: SystemSetting): Observable<any> {
+    return this.http.post(`${this.apiUrl}/setting/`, setting);
   }
 } 

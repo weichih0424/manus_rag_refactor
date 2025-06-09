@@ -1,7 +1,7 @@
 <div class="container-fluid chat-container">
     <div class="row h-100">
         <!-- 側邊欄 - 對話列表 -->
-        <div class="col-md-3 col-lg-2 conversation-sidebar" [class.open]="isConversationListOpen">
+        <div class="col-lg-3 conversation-sidebar" [class.open]="isConversationListOpen">
             <div class="sidebar-header">
                 <h5>我的對話</h5>
                 <button 
@@ -81,163 +81,208 @@
             </div>
         </div>
 
-        <!-- 主要聊天區域（保持不變） -->
-        <div class="col-md-9 col-lg-10 main-content" [class.full-width]="!isConversationListOpen">
+        <!-- 主要聊天區域 -->
+        <div class="col-lg-6 main-content" [class.col-lg-9]="!isConversationListOpen">
             <!-- 移動裝置上的側邊欄切換按鈕 -->
             <button class="btn btn-light sidebar-toggle d-md-none" (click)="toggleConversationList()">
                 <i class="bi" [ngClass]="{'bi-list': !isConversationListOpen, 'bi-x': isConversationListOpen}"></i>
             </button>
             
-            <div class="row">
-                <div class="col-lg-8">
-                    <div class="card chat-card">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">與知識庫對話</h5>
-                            <div>
-                                <button class="btn btn-sm btn-outline-secondary d-none d-md-inline-block" (click)="toggleConversationList()">
-                                    <i class="bi" [ngClass]="{'bi-layout-sidebar': !isConversationListOpen, 'bi-layout-sidebar-inset-reverse': isConversationListOpen}"></i>
+            <div class="card chat-card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">與知識庫對話</h5>
+                    <div>
+                        <button class="btn btn-sm btn-outline-secondary d-none d-md-inline-block" (click)="toggleConversationList()">
+                            <i class="bi" [ngClass]="{'bi-layout-sidebar': !isConversationListOpen, 'bi-layout-sidebar-inset-reverse': isConversationListOpen}"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body chat-body" #chatMessages>
+                    <!-- 消息顯示區域 -->
+                    <ng-container *ngFor="let message of messages">
+                        <!-- 系統消息 -->
+                        <div *ngIf="message.type === 'system'" class="message system-message">
+                            <div class="message-content">
+                                <p>{{message.content}}</p>
+                            </div>
+                        </div>
+
+                        <!-- 用戶消息 -->
+                        <div *ngIf="message.type === 'user'" class="message user-message">
+                            <div class="message-content">
+                                <p>{{message.content}}</p>
+                            </div>
+                        </div>
+
+                        <!-- 助手消息 -->
+                        <div *ngIf="message.type === 'assistant'" class="message assistant-message">
+                            <div class="message-content">
+                                <div [innerHTML]="message.content | markdownToHtml"></div>
+                            </div>
+                            <div class="message-sources" *ngIf="message.sources && message.sources.length > 0 && message.showSources">
+                                <strong>來源：</strong>
+                                <ul class="source-list">
+                                    <li *ngFor="let source of message.sources" 
+                                        class="source-item"
+                                        (click)="showSourceDetail(source)"
+                                        [title]="'點擊查看詳細內容'">
+                                        <span class="source-dot"></span>
+                                        {{source.file_name}} 
+                                        <span *ngIf="source.page !== undefined && source.page !== null">(第{{source.page}}頁)</span>
+                                    </li>
+                                </ul>
+                            </div>
+                            <div class="message-actions">
+                                <button class="btn btn-sm btn-outline-secondary copy-button" title="複製回答" (click)="copyAnswer(message.content, $event)">
+                                    <i class="bi bi-clipboard"></i>
                                 </button>
                             </div>
                         </div>
-                        <div class="card-body chat-body" #chatMessages>
-                            <!-- 消息顯示區域 -->
-                            <ng-container *ngFor="let message of messages">
-                                <!-- 系統消息 -->
-                                <div *ngIf="message.type === 'system'" class="message system-message">
-                                    <div class="message-content">
-                                        <p>{{message.content}}</p>
-                                    </div>
-                                </div>
+                    </ng-container>
 
-                                <!-- 用戶消息 -->
-                                <div *ngIf="message.type === 'user'" class="message user-message">
-                                    <div class="message-content">
-                                        <p>{{message.content}}</p>
-                                    </div>
-                                </div>
-
-                                <!-- 助手消息 -->
-                                <div *ngIf="message.type === 'assistant'" class="message assistant-message">
-                                    <div class="message-content">
-                                        <div [innerHTML]="message.content | markdownToHtml"></div>
-                                    </div>
-                                    <div class="message-sources" *ngIf="message.sources && message.sources.length > 0 && message.showSources">
-                                        <strong>來源：</strong>
-                                        <ul class="source-list">
-                                            <li *ngFor="let source of message.sources">
-                                                {{source.file_name}} <span *ngIf="source.page !== undefined && source.page !== null">(第{{source.page}}頁)</span>
-                                            </li>
-                                        </ul>
-                                    </div>
-                                    <div class="message-actions">
-                                        <button class="btn btn-sm btn-outline-secondary copy-button" title="複製回答" (click)="copyAnswer(message.content, $event)">
-                                            <i class="bi bi-clipboard"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            </ng-container>
-
-                            <!-- 打字指示器 -->
-                            <div *ngIf="isTyping" class="message assistant-message typing-indicator">
-                                <div class="message-content">
-                                    <p><i class="bi bi-three-dots"></i> 正在思考...</p>
-                                </div>
-                            </div>
+                    <!-- 打字指示器 -->
+                    <div *ngIf="isTyping" class="message assistant-message typing-indicator">
+                        <div class="message-content">
+                            <p><i class="bi bi-three-dots"></i> 正在思考...</p>
                         </div>
-                        <div class="card-footer">
-                            <div class="form-check form-switch mb-3">
-                                <input class="form-check-input" type="checkbox" id="showSourcesSwitch" [(ngModel)]="showSources" (change)="toggleSourcesDisplay()">
-                                <label class="form-check-label" for="showSourcesSwitch">顯示來源</label>
-                            </div>
-                            <div class="input-group">
-                                <textarea class="form-control" #messageInputElem [(ngModel)]="messageInput" (keydown)="onKeydown($event)" placeholder="輸入您的問題..." rows="2"></textarea>
-                                <button class="btn btn-primary" type="button" [disabled]="isTyping || !messageInput.trim()" (click)="sendMessage()">
-                                    <i class="bi bi-send"></i> 發送
-                                </button>
-                            </div>
-                            <div class="d-flex justify-content-between mt-2">
-                                <div>
-                                    <button class="btn btn-sm btn-outline-secondary" (click)="clearChat()">
-                                        <i class="bi bi-trash"></i> 清空對話
-                                    </button>
-                                </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="showSourcesSwitch" [(ngModel)]="showSources" (change)="toggleSourcesDisplay()">
+                        <label class="form-check-label" for="showSourcesSwitch">顯示來源</label>
+                    </div>
+                    <div class="input-group">
+                        <textarea class="form-control" #messageInputElem [(ngModel)]="messageInput" (keydown)="onKeydown($event)" placeholder="輸入您的問題..." rows="2"></textarea>
+                        <button class="btn btn-primary" type="button" [disabled]="isTyping || !messageInput.trim()" (click)="sendMessage()">
+                            <i class="bi bi-send"></i> 發送
+                        </button>
+                    </div>
+                    <div class="d-flex justify-content-between mt-2">
+                        <div>
+                            <button class="btn btn-sm btn-outline-secondary" (click)="clearChat()">
+                                <i class="bi bi-trash"></i> 清空對話
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右側相關文檔區域 -->
+        <div class="col-lg-3 right-sidebar">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">相關文檔</h5>
+                </div>
+                <div class="card-body">
+                    <div class="text-center py-4" *ngIf="!relatedDocs || relatedDocs.length === 0">
+                        <p class="text-muted">尚未檢索到相關文檔</p>
+                        <p class="text-muted small">發送問題後將顯示相關文檔</p>
+                    </div>
+                    
+                    <!-- 相關文檔列表 -->
+                    <div *ngFor="let doc of relatedDocs" class="related-doc">
+                        <div class="doc-title">
+                            <i class="bi bi-file-earmark-text"></i>
+                            <span class="doc-filename">{{doc.file_name}}</span>
+                        </div>
+                        <div class="doc-content" [title]="doc.content">{{doc.content}}</div>
+                        <div class="doc-meta">
+                            <span class="doc-page" *ngIf="doc.page !== undefined && doc.page !== null">
+                                <i class="bi bi-bookmark"></i> 第{{doc.page}}頁
+                            </span>
+                            <span class="doc-source-id" *ngIf="doc.file_id">ID: {{doc.file_id | slice:0:8}}...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card mt-3 chat-actions">
+                <div class="card-header">
+                    <h5 class="mb-0">對話操作</h5>
+                </div>
+                <div class="card-body">
+                    <button class="btn btn-outline-primary w-100 mb-2" [disabled]="!lastUserMessage || !currentChatId || isTyping" (click)="regenerateAnswer()">
+                        <i class="bi bi-arrow-repeat"></i> 重新生成回答
+                    </button>
+                    <button class="btn btn-outline-secondary w-100" (click)="saveChatHistory()">
+                        <i class="bi bi-download"></i> 保存對話記錄
+                    </button>
+                </div>
+            </div>
+            
+            <div class="card mt-3 kb-status">
+                <div class="card-header">
+                    <h5 class="mb-0">知識庫狀態</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="mb-0"><i class="bi bi-file-earmark"></i> 文件數量</p>
+                        </div>
+                        <div>
+                            <span class="badge bg-primary">{{kbStatus.files_count}}</span>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mt-2">
+                        <div>
+                            <p class="mb-0"><i class="bi bi-card-text"></i> 文檔塊數量</p>
+                        </div>
+                        <div>
+                            <span class="badge bg-primary">{{kbStatus.chunks_count}}</span>
+                        </div>
+                    </div>
+                    <div class="text-center mt-3">
+                        <a routerLink="/knowledge_base" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-plus-circle"></i> 添加更多文件
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 來源詳情模態框 -->
+<div class="modal fade" id="sourceDetailModal" tabindex="-1" aria-labelledby="sourceDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="sourceDetailModalLabel">
+                    <i class="bi bi-file-earmark-text me-2"></i>來源詳情
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" *ngIf="selectedSource">
+                <div class="source-detail-info">
+                    <div class="row mb-3">
+                        <div class="col-sm-3"><strong>檔案名稱：</strong></div>
+                        <div class="col-sm-9">{{selectedSource.file_name}}</div>
+                    </div>
+                    <div class="row mb-3" *ngIf="selectedSource.page !== undefined && selectedSource.page !== null">
+                        <div class="col-sm-3"><strong>頁面：</strong></div>
+                        <div class="col-sm-9">第 {{selectedSource.page}} 頁</div>
+                    </div>
+                    <div class="row mb-3" *ngIf="selectedSource.file_id">
+                        <div class="col-sm-3"><strong>文件ID：</strong></div>
+                        <div class="col-sm-9">{{selectedSource.file_id}}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-3"><strong>內容：</strong></div>
+                        <div class="col-sm-9">
+                            <div class="source-content-box">
+                                {{selectedSource.content}}
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="col-lg-4">
-                    <div class="right-sidebar">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="mb-0">相關文檔</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="text-center py-4" *ngIf="!relatedDocs || relatedDocs.length === 0">
-                                    <p class="text-muted">尚未檢索到相關文檔</p>
-                                    <p class="text-muted small">發送問題後將顯示相關文檔</p>
-                                </div>
-                                
-                                <!-- 相關文檔列表 -->
-                                <div *ngFor="let doc of relatedDocs" class="related-doc">
-                                    <div class="doc-title">
-                                        <i class="bi bi-file-earmark-text"></i>
-                                        <span class="doc-filename">{{doc.file_name}}</span>
-                                    </div>
-                                    <div class="doc-content" [title]="doc.content">{{doc.content}}</div>
-                                    <div class="doc-meta">
-                                        <span class="doc-page" *ngIf="doc.page !== undefined && doc.page !== null">
-                                            <i class="bi bi-bookmark"></i> 第{{doc.page}}頁
-                                        </span>
-                                        <span class="doc-source-id" *ngIf="doc.file_id">ID: {{doc.file_id | slice:0:8}}...</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="card mt-3 chat-actions">
-                            <div class="card-header">
-                                <h5 class="mb-0">對話操作</h5>
-                            </div>
-                            <div class="card-body">
-                                <button class="btn btn-outline-primary w-100 mb-2" [disabled]="!lastUserMessage || !currentChatId || isTyping" (click)="regenerateAnswer()">
-                                    <i class="bi bi-arrow-repeat"></i> 重新生成回答
-                                </button>
-                                <button class="btn btn-outline-secondary w-100" (click)="saveChatHistory()">
-                                    <i class="bi bi-download"></i> 保存對話記錄
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <div class="card mt-3 kb-status">
-                            <div class="card-header">
-                                <h5 class="mb-0">知識庫狀態</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <p class="mb-0"><i class="bi bi-file-earmark"></i> 文件數量</p>
-                                    </div>
-                                    <div>
-                                        <span class="badge bg-primary">{{kbStatus.files_count}}</span>
-                                    </div>
-                                </div>
-                                <div class="d-flex justify-content-between align-items-center mt-2">
-                                    <div>
-                                        <p class="mb-0"><i class="bi bi-card-text"></i> 文檔塊數量</p>
-                                    </div>
-                                    <div>
-                                        <span class="badge bg-primary">{{kbStatus.chunks_count}}</span>
-                                    </div>
-                                </div>
-                                <div class="text-center mt-3">
-                                    <a routerLink="/knowledge_base" class="btn btn-sm btn-outline-primary">
-                                        <i class="bi bi-plus-circle"></i> 添加更多文件
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" (click)="copySourceContent()">
+                    <i class="bi bi-clipboard me-1"></i>複製內容
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
             </div>
         </div>
     </div>
